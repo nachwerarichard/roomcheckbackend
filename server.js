@@ -104,6 +104,20 @@ app.delete('/checklists/:id', async (req, res) => {
   }
 });
 
+// PUT endpoint to update a checklist by ID
+app.put('/checklists/:id', (req, res) => {
+  const checklistId = parseInt(req.params.id);
+  const { room, date, items } = req.body;
+
+  const index = checklists.findIndex(entry => entry.id === checklistId);
+  if (index === -1) {
+    return res.status(404).json({ message: 'Checklist not found' });
+  }
+
+  checklists[index] = { ...checklists[index], room, date, items };
+  res.status(200).json({ message: 'Checklist updated successfully', checklist: checklists[index] });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
