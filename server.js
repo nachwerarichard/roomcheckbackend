@@ -8,11 +8,7 @@ require('dotenv').config();
 const app = express();
 
 // ✅ FIXED: Allow frontend requests from Netlify domain
-app.use(cors({
-  origin: 'https://comforting-pegasus-3ff5b2.netlify.app', // ❌ REMOVE trailing slash!
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
-}));
+
 
 // ✅ Middleware
 app.use(bodyParser.json());
