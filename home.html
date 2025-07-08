@@ -48,107 +48,110 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Hotel Room Checklist</h1>
+    <div class="container">
+        <h1>Hotel Room Checklist</h1>
 
-    <form id="checklistForm">
-      <div class="item">
-        <label for="room">Room Number:</label>
-        <select id="room" name="room" required>
-          <option value="">-- Select a Room --</option>
-          <option value="101">Room 101</option>
-          <option value="102">Room 102</option>
-          <option value="103">Room 103</option>
-        </select>
-      </div>
+        <form id="checklistForm">
+            <div class="item">
+                <label for="room">Room Number:</label>
+                <select id="room" name="room" required>
+                    <option value="">-- Select a Room --</option>
+                    <option value="101">Room 101</option>
+                    <option value="102">Room 102</option>
+                    <option value="103">Room 103</option>
+                </select>
+            </div>
 
-      <div class="item">
-        <label for="date">Date:</label>
-        <input type="date" id="date" name="date" required />
-      </div>
+            <div class="item">
+                <label for="date">Date:</label>
+                <input type="date" id="date" name="date" required />
+            </div>
 
-      <div class="item">
-        <label>Towels:</label>
-        <input type="radio" name="towels" value="yes" required /> Yes
-        <input type="radio" name="towels" value="no" required /> No
-      </div>
+            <div class="item">
+                <label>Towels:</label>
+                <input type="radio" name="towels" value="yes" required /> Yes
+                <input type="radio" name="towels" value="no" required /> No
+            </div>
 
-      <div class="item">
-        <label>Soap:</label>
-        <input type="radio" name="soap" value="yes" required /> Yes
-        <input type="radio" name="soap" value="no" required /> No
-      </div>
+            <div class="item">
+                <label>Soap:</label>
+                <input type="radio" name="soap" value="yes" required /> Yes
+                <input type="radio" name="soap" value="no" required /> No
+            </div>
 
-      <div class="item">
-        <label>TV Remote:</label>
-        <input type="radio" name="tv_remote" value="yes" required /> Yes
-        <input type="radio" name="tv_remote" value="no" required /> No
-      </div>
+            <div class="item">
+                <label>TV Remote:</label>
+                <input type="radio" name="tv_remote" value="yes" required /> Yes
+                <input type="radio" name="tv_remote" value="no" required /> No
+            </div>
 
-      <div class="item">
-        <label>Keycard:</label>
-        <input type="radio" name="keycard" value="yes" required /> Yes
-        <input type="radio" name="keycard" value="no" required /> No
-      </div>
+            <div class="item">
+                <label>Keycard:</label>
+                <input type="radio" name="keycard" value="yes" required /> Yes
+                <input type="radio" name="keycard" value="no" required /> No
+            </div>
 
-      <div class="item">
-        <label>Clean Bed Linen:</label>
-        <input type="radio" name="bed_linen" value="yes" required /> Yes
-        <input type="radio" name="bed_linen" value="no" required /> No
-      </div>
+            <div class="item">
+                <label>Clean Bed Linen:</label>
+                <input type="radio" name="bed_linen" value="yes" required /> Yes
+                <input type="radio" name="bed_linen" value="no" required /> No
+            </div>
 
-      <button type="submit">Submit Checklist</button>
-    </form>
+            <button type="submit">Submit Checklist</button>
+        </form>
 
-    <p id="message"></p>
-  </div>
+        <p id="message"></p>
+    </div>
 
-  <script>
-    document.getElementById('checklistForm').addEventListener('submit', function (e) {
-      e.preventDefault();
+    <script>
+        document.getElementById('checklistForm').addEventListener('submit', function (e) {
+            e.preventDefault();
 
-      (async () => {
-        const room = document.getElementById('room').value;
-        const date = document.getElementById('date').value;
+            (async () => {
+                const room = document.getElementById('room').value;
+                const date = document.getElementById('date').value;
 
-        if (!room || !date) {
-          document.getElementById('message').textContent = 'Please select a room and date.';
-          return;
-        }
+                if (!room || !date) {
+                    document.getElementById('message').textContent = 'Please select a room and date.';
+                    return;
+                }
 
-        const formData = new FormData(e.target);
-        const items = Object.fromEntries(formData.entries());
-        delete items.room;
-        delete items.date;
+                const formData = new FormData(e.target);
+                const items = Object.fromEntries(formData.entries());
+                delete items.room; // Remove room from the 'items' object as it's a separate field
+                delete items.date; // Remove date from the 'items' object as it's a separate field
 
-        const data = {
-          room,
-          date,
-          items
-        };
+                const data = {
+                    room,
+                    date,
+                    items
+                };
 
-        try {
-          const res = await fetch('https://roomcheckbackend.onrender.com/submit-checklist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
-          });
+                try {
+                    // *** IMPORTANT: Change this URL if your backend is not on Render or is running locally ***
+                    // If running locally: const res = await fetch('http://localhost:3000/submit-checklist', {
+                    const res = await fetch('https://roomcheckbackend.onrender.com/submit-checklist', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(data)
+                    });
 
-          const result = await res.json();
+                    const result = await res.json();
 
-          document.getElementById('message').textContent = result.message || 'Checklist submitted.';
+                    document.getElementById('message').textContent = result.message || 'Checklist submitted.';
 
-          if (result.emailSent) {
-            document.getElementById('message').textContent += ' Email sent for missing items.';
-          }
+                    if (result.emailSent) {
+                        document.getElementById('message').textContent += ' Email sent for missing items.';
+                    }
 
-          e.target.reset();
-        } catch (err) {
-          console.error('Error:', err);
-          document.getElementById('message').textContent = 'An error occurred while submitting.';
-        }
-      })();
-    });
-  </script>
+                    e.target.reset(); // Reset the form after successful submission
+                } catch (err) {
+                    console.error('Error:', err);
+                    document.getElementById('message').textContent = 'An error occurred while submitting.';
+                }
+            })();
+        });
+    </script>
 </body>
+</html>
 </html>
