@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <title>Hotel Room Checklist</title>
   <style>
     body {
@@ -18,6 +19,8 @@
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.1);
     }
+    .btn { padding: 5px 10px; margin: 2px; cursor: pointer; }
+    .auth-box { max-width: 300px; margin: auto; border: 1px solid #ccc; padding: 1rem; }
     h1 {
       text-align: center;
     }
@@ -53,7 +56,15 @@
     .btn { padding: 5px 10px; cursor: pointer; }
   </style>
 </head>
-<body>
+<body><div id="loginSection">
+  <h2>Admin Login</h2>
+  <div class="auth-box">
+    <label>Username: <input type="text" id="username" /></label><br><br>
+    <label>Password: <input type="password" id="password" /></label><br><br>
+    <button class="btn" onclick="login()">Login</button>
+    <p id="loginMsg" style="color:red;"></p>
+  </div>
+</div>
     <div class="container">
         <h1>Hotel Room Checklist</h1>
 
@@ -110,7 +121,8 @@
 
       <h2>Room Checklists</h2>
 <input type="search" id="searchInput" placeholder="Search room or date..." />
-
+<button class="btn" onclick="exportToExcel()">Export to Excel</button>
+  <button class="btn" onclick="window.print()">Print</button>
 <table id="checklistTable">
   <thead>
     <tr>
@@ -191,7 +203,28 @@ async function loadChecklists() {
   allChecklists = await res.json();
   renderTable();
 }
-
+function login() {
+  const user = document.getElementById('username').value;
+  const pass = document.getElementById('password').value;
+  if (user && pass === '123') {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    loadChecklists();
+  } else {
+    document.getElementById('loginMsg').textContent = 'Invalid login.';
+  }
+}
+    function login() {
+  const user = document.getElementById('username').value;
+  const pass = document.getElementById('password').value;
+  if (user && pass === '123') {
+    document.getElementById('loginSection').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    loadChecklists();
+  } else {
+    document.getElementById('loginMsg').textContent = 'Invalid login.';
+  }
+}
 function renderTable() {
   const tbody = document.getElementById('checklistBody');
   const search = document.getElementById('searchInput').value.toLowerCase();
