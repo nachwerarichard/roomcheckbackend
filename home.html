@@ -203,28 +203,30 @@ async function loadChecklists() {
   allChecklists = await res.json();
   renderTable();
 }
-function login() {
+async function login() {
   const user = document.getElementById('username').value;
   const pass = document.getElementById('password').value;
-  if (user && pass === '123') {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    loadChecklists();
-  } else {
-    document.getElementById('loginMsg').textContent = 'Invalid login.';
+
+  try {
+    const res = await fetch(`${backendURL}/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: user, password: pass })
+    });
+
+    if (res.ok) {
+      document.getElementById('loginSection').style.display = 'none';
+      document.getElementById('mainApp').style.display = 'block';
+      loadChecklists();
+    } else {
+      document.getElementById('loginMsg').textContent = 'Invalid login.';
+    }
+  } catch (err) {
+    console.error('Login error:', err);
+    document.getElementById('loginMsg').textContent = 'Server error.';
   }
 }
-    function login() {
-  const user = document.getElementById('username').value;
-  const pass = document.getElementById('password').value;
-  if (user && pass === '123') {
-    document.getElementById('loginSection').style.display = 'none';
-    document.getElementById('mainApp').style.display = 'block';
-    loadChecklists();
-  } else {
-    document.getElementById('loginMsg').textContent = 'Invalid login.';
-  }
-}
+
 function renderTable() {
   const tbody = document.getElementById('checklistBody');
   const search = document.getElementById('searchInput').value.toLowerCase();
