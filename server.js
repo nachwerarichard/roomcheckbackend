@@ -61,7 +61,7 @@ app.post('/submit-checklist', async (req, res) => {
       const html = `<p>Room <strong>${room}</strong> on <strong>${date}</strong> is missing:</p><ul>${missingItems.map(([key]) => `<li>${key}</li>`).join('')}</ul>`;
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER,
+        to: process.env.TO_NOTIFY,
         subject: `Missing Items - Room ${room}`,
         html,
       });
