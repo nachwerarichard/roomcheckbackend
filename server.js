@@ -7,7 +7,8 @@ const Checklist = require('./checklist');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-
+const ADMIN_USER = process.env.ADMIN_USER || 'admin';
+const ADMIN_PASS = process.env.ADMIN_PASS || '123';
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB connected'))
@@ -19,6 +20,18 @@ mongoose.connect(process.env.MONGO_URI)
 // Middleware
 app.use(cors());
 app.use(express.json());
+// Add this to store credentials securely (in memory or DB; for demo, using plain values)
+
+
+app.post('/login', (req, res) => {
+  const { username, password } = req.body;
+
+  if (username === ADMIN_USER && password === ADMIN_PASS) {
+    return res.status(200).json({ message: 'Login successful' });
+  }
+
+  return res.status(401).json({ message: 'Invalid credentials' });
+});
 
 // Email transporter
 const transporter = nodemailer.createTransport({
