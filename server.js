@@ -55,24 +55,34 @@ app.post('/submit-checklist', async (req, res) => {
   try {
     await checklist.save();
 
-    // Send email if needed
+    // Check for missing items
     const missingItems = Object.entries(items).filter(([, val]) => val === 'no');
     if (missingItems.length > 0) {
-      const html = `<p>Room <strong>${room}</strong> on <strong>${date}</strong> is missing:</p><ul>${missingItems.map(([key]) => `<li>${key}</li>`).join('')}</ul>`;
-      await transporter.sendMail({
-        from: process.env.EMAIL_USER,
-        to: process.env.TO_NOTIFY,
-        subject: `Missing Items - Room ${room}`,
-        html,
-      });
+      const html = `<p>Room <strong>${room}</strong> on <strong>${date}</strong> is missing:</p>
+        <ul>${missingItems.map(([key]) => `<li>${key}</li>`).join('')}</ul>`;
+
+      try {
+        const result = await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: process.env.EMAIL_USER,
+          subject: `Missing Items - Room ${room}`,
+          html,
+        });
+        console.log('📧 Email sent:', result.response);
+      } catch (emailErr) {
+        console.error('❌ Email sending failed:', emailErr);
+        return res.status(500).json({ message: 'Email sending failed', error: emailErr.message });
+      }
     }
 
     res.status(201).json({ message: 'Submitted', checklist });
+
   } catch (err) {
     console.error('❌ Error saving checklist:', err);
     res.status(500).json({ message: 'Server error' });
   }
 });
+
 
 // ✅ Get all checklists
 app.get('/checklists', async (req, res) => {
