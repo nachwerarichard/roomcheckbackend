@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Hotel Room Checklist</title>
+</head>
+<body class="bg-gray-100 min-h-screen p-4 text-gray-800">
+  <!-- Login Section -->
+  <div id="loginSection" class="max-w-md mx-auto bg-white p-6 rounded-lg shadow-lg mb-8">
+    <h2 class="text-xl font-semibold mb-4 text-center">Admin Login</h2>
+    <div class="space-y-4">
+      <div>
+        <label class="block text-sm font-medium">Username</label>
+        <input type="text" id="username" class="w-full mt-1 px-3 py-2 border rounded-md focus:outline-none focus:ring focus:ring-blue-300" />
+      </div>
+      <div>
+        <label class="block text-sm font-medium">Password</label>
+        <input type="password" id="password" class="w-full mt-1 px-3 py-2 border rounded-md focus:outline-none focus:ring focus:ring-blue-300" />
+      </div>
+      <button onclick="login()" class="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700">Login</button>
+      <p id="loginMsg" class="text-red-500 text-sm text-center"></p>
+    </div>
+  </div>
+
+  <!-- Main App Section -->
+  <div id="mainApp" class="max-w-5xl mx-auto bg-white p-6 rounded-lg shadow-lg hidden">
+    <h1 class="text-2xl font-bold mb-6 text-center">Hotel Room Checklist</h1>
+
+    <!-- Checklist Form -->
+    <form id="checklistForm" class="grid gap-4 md:grid-cols-2 mb-6">
+      <div>
+        <label for="room" class="block font-medium">Room Number</label>
+        <select id="room" name="room" required class="w-full mt-1 px-3 py-2 border rounded-md">
+          <option value="">-- Select a Room --</option>
+          <option value="101">Room 101</option>
+          <option value="102">Room 102</option>
+          <option value="103">Room 103</option>
+        </select>
+      </div>
+
+      <div>
+        <label for="date" class="block font-medium">Date</label>
+        <input type="date" id="date" name="date" required class="w-full mt-1 px-3 py-2 border rounded-md" />
+      </div>
+
+      <!-- Checklist Items -->
+      <div>
+        <label class="block font-medium">Towels</label>
+        <div class="space-x-4 mt-1">
+          <label><input type="radio" name="towels" value="yes" required /> Yes</label>
+          <label><input type="radio" name="towels" value="no" required /> No</label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-medium">Soap</label>
+        <div class="space-x-4 mt-1">
+          <label><input type="radio" name="soap" value="yes" required /> Yes</label>
+          <label><input type="radio" name="soap" value="no" required /> No</label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-medium">TV Remote</label>
+        <div class="space-x-4 mt-1">
+          <label><input type="radio" name="tv_remote" value="yes" required /> Yes</label>
+          <label><input type="radio" name="tv_remote" value="no" required /> No</label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-medium">Keycard</label>
+        <div class="space-x-4 mt-1">
+          <label><input type="radio" name="keycard" value="yes" required /> Yes</label>
+          <label><input type="radio" name="keycard" value="no" required /> No</label>
+        </div>
+      </div>
+
+      <div>
+        <label class="block font-medium">Clean Bed Linen</label>
+        <div class="space-x-4 mt-1">
+          <label><input type="radio" name="bed_linen" value="yes" required /> Yes</label>
+          <label><input type="radio" name="bed_linen" value="no" required /> No</label>
+        </div>
+      </div>
+
+      <div class="md:col-span-2">
+        <button type="submit" class="w-full bg-green-600 text-white py-2 rounded hover:bg-green-700">Submit Checklist</button>
+      </div>
+    </form>
+
+    <p id="message" class="text-center text-green-600 font-medium mb-6"></p>
+
+    <!-- Checklist Table Section -->
+    <h2 class="text-xl font-semibold mb-2">Room Checklists</h2>
+    <div class="flex flex-col md:flex-row md:items-center gap-4 mb-4">
+      <input type="search" id="searchInput" placeholder="Search room or date..." class="flex-1 px-3 py-2 border rounded-md" />
+      <div class="flex gap-2">
+        <button onclick="exportToExcel()" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Export</button>
+        <button onclick="window.print()" class="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600">Print</button>
+      </div>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table id="checklistTable" class="w-full table-auto border border-gray-300">
+        <thead class="bg-gray-200">
+          <tr>
+            <th class="px-4 py-2 border">Room</th>
+            <th class="px-4 py-2 border">Date</th>
+            <th class="px-4 py-2 border">Items</th>
+            <th class="px-4 py-2 border">Actions</th>
+          </tr>
+        </thead>
+        <tbody id="checklistBody" class="bg-white"></tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="flex items-center justify-between mt-6">
+      <button id="prevBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Prev</button>
+      <span id="pageInfo" class="text-sm"></span>
+      <button id="nextBtn" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Next</button>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
