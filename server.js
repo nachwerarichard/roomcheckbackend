@@ -5,31 +5,35 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config();
 
-// allow all origins OR specify your frontend URL for security
+const app = express();
+
+// ✅ FIXED: Allow frontend requests from Netlify domain
 app.use(cors({
-  origin: 'https://comforting-pegasus-3ff5b2.netlify.app/'  // Replace with actual frontend domain
+  origin: 'https://comforting-pegasus-3ff5b2.netlify.app', // ❌ REMOVE trailing slash!
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
 }));
 
-const app = express();
-app.use(cors());
+// ✅ Middleware
 app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// Connect to MongoDB
+// ✅ Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('MongoDB connected successfully'))
+  .then(() => console.log('✅ MongoDB connected successfully'))
   .catch(err => {
-    console.error('MongoDB connection error:', err);
-    // Exit the process if the database connection fails
+    console.error('❌ MongoDB connection error:', err);
     process.exit(1);
   });
 
+// ✅ Mongoose Model
 const Checklist = mongoose.model('Checklist', new mongoose.Schema({
   room: { type: String, required: true },
-  date: { type: String, required: true }, // Consider using Date type for better date handling
+  date: { type: String, required: true },
   items: { type: Object, required: true },
-}, { timestamps: true })); // Add timestamps for created/updated dates
+}, { timestamps: true }));
 
+// ✅ Email Transporter
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -38,6 +42,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
+// ✅ Submit checklist route
 app.post('/submit-checklist', async (req, res) => {
   const { room, date, items } = req.body;
 
@@ -63,14 +68,18 @@ app.post('/submit-checklist', async (req, res) => {
       await transporter.sendMail(mailOptions);
     }
 
-    res.status(201).json({ message: 'Checklist submitted successfully.', checklistId: checklist._id });
+    res.status(201).json({
+      message: 'Checklist submitted successfully.',
+      checklistId: checklist._id,
+      emailSent: missingItems.length > 0
+    });
   } catch (error) {
-    console.error('Error submitting checklist or sending email:', error);
+    console.error('❌ Error submitting checklist or sending email:', error);
     res.status(500).json({ message: 'Failed to submit checklist.', error: error.message });
   }
 });
 
-// Basic health check endpoint
+// ✅ Health check route
 app.get('/health', (req, res) => {
   if (mongoose.connection.readyState === 1) {
     res.status(200).json({ status: 'OK', database: 'connected' });
@@ -79,6 +88,6 @@ app.get('/health', (req, res) => {
   }
 });
 
-
+// ✅ Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
