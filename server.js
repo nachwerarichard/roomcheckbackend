@@ -1,91 +1,110 @@
-require('dotenv').config(); // Load environment variables from .env file
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
+const mongoose = require('mongoose');
+const Checklist = require('./models/Checklist');
 
 const app = express();
-const PORT = process.env.PORT || 3000; // Use port from environment variable or default to 3000
+const PORT = process.env.PORT || 3000;
+
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI)
+  .then(() => console.log('✅ MongoDB connected'))
+  .catch(err => {
+    console.error('❌ MongoDB error:', err);
+    process.exit(1);
+  });
 
 // Middleware
-app.use(cors()); // Enable CORS for all origins (adjust for production)
-app.use(express.json()); // Parse JSON request bodies
+app.use(cors());
+app.use(express.json());
 
-// Simple in-memory data store for demonstration purposes
-const checklists = [];
-
-// Nodemailer transporter setup
+// Email transporter
 const transporter = nodemailer.createTransport({
-    service: 'gmail', // You can use other services or SMTP options
-    auth: {
-        user: process.env.EMAIL_USER, // Your email address from .env
-        pass: process.env.EMAIL_PASS, // Your email app password from .env
-    },
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
+  },
 });
 
-// POST endpoint to submit the checklist
+// Submit checklist
 app.post('/submit-checklist', async (req, res) => {
-    const { room, date, items } = req.body;
+  const { room, date, items } = req.body;
 
-    if (!room || !date || !items) {
-        return res.status(400).json({ message: 'Missing required fields: room, date, or items.' });
-    }
+  if (!room || !date || !items) {
+    return res.status(400).json({ message: 'Missing fields' });
+  }
 
-    const newChecklistEntry = {
-        id: Date.now(), // Simple unique ID
-        room,
-        date,
-        items,
-        timestamp: new Date(),
-    };
+  const checklist = new Checklist({ room, date, items });
 
-    checklists.push(newChecklistEntry);
-    console.log('New checklist entry:', newChecklistEntry);
+  try {
+    await checklist.save();
 
-    // Check for missing items (marked "no")
-    const missingItems = Object.entries(items).filter(([, value]) => value === 'no');
-
-    let emailSent = false;
+    // Send email if needed
+    const missingItems = Object.entries(items).filter(([, val]) => val === 'no');
     if (missingItems.length > 0) {
-        const missingItemsList = missingItems.map(([key]) => key.replace(/_/g, ' ')).join(', ');
-        const mailOptions = {
-            from: process.env.EMAIL_USER,
-            to: process.env.EMAIL_USER, // Send email to yourself or a designated hotel staff email
-            subject: `Urgent: Missing Items in Room ${room} - ${date}`,
-            html: `
-                <p>Dear Hotel Staff,</p>
-                <p>The following items were reported missing or not in place for Room <strong>${room}</strong> on <strong>${date}</strong>:</p>
-                <ul>
-                    ${missingItems.map(([key, value]) => `<li>${key.replace(/_/g, ' ')}: ${value}</li>`).join('')}
-                </ul>
-                <p>Please attend to this matter promptly.</p>
-                <p>Regards,</p>
-                <p>Hotel Checklist System</p>
-            `,
-        };
-
-        try {
-            await transporter.sendMail(mailOptions);
-            console.log('Email sent successfully for missing items.');
-            emailSent = true;
-        } catch (error) {
-            console.error('Error sending email:', error);
-            // Even if email fails, the checklist submission can still be successful
-        }
+      const html = `<p>Room <strong>${room}</strong> on <strong>${date}</strong> is missing:</p><ul>${missingItems.map(([key]) => `<li>${key}</li>`).join('')}</ul>`;
+      await transporter.sendMail({
+        from: process.env.EMAIL_USER,
+        to: process.env.EMAIL_USER,
+        subject: `Missing Items - Room ${room}`,
+        html,
+      });
     }
 
-    res.status(200).json({
-        message: 'Checklist submitted successfully!',
-        emailSent: emailSent,
-        checklist: newChecklistEntry, // Optionally send back the stored entry
-    });
+    res.status(201).json({ message: 'Submitted', checklist });
+  } catch (err) {
+    console.error('❌ Error saving checklist:', err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-// Basic GET endpoint to view all checklists (for testing/debugging)
-app.get('/checklists', (req, res) => {
-    res.status(200).json(checklists);
+// ✅ Get all checklists
+app.get('/checklists', async (req, res) => {
+  try {
+    const data = await Checklist.find().sort({ timestamp: -1 });
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to retrieve checklists' });
+  }
 });
 
-// Start the server
+// ✅ Get one checklist by ID
+app.get('/checklists/:id', async (req, res) => {
+  try {
+    const data = await Checklist.findById(req.params.id);
+    if (!data) return res.status(404).json({ message: 'Not found' });
+    res.json(data);
+  } catch {
+    res.status(500).json({ message: 'Failed to fetch checklist' });
+  }
+});
+
+// ✅ Update checklist by ID
+app.put('/checklists/:id', async (req, res) => {
+  try {
+    const updated = await Checklist.findByIdAndUpdate(req.params.id, req.body, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Not found' });
+    res.json({ message: 'Updated', updated });
+  } catch (err) {
+    res.status(500).json({ message: 'Update failed' });
+  }
+});
+
+// ✅ Delete checklist
+app.delete('/checklists/:id', async (req, res) => {
+  try {
+    const result = await Checklist.findByIdAndDelete(req.params.id);
+    if (!result) return res.status(404).json({ message: 'Checklist not found' });
+    res.json({ message: 'Deleted' });
+  } catch (err) {
+    res.status(500).json({ message: 'Delete failed' });
+  }
+});
+
+// Start server
 app.listen(PORT, () => {
-    console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
