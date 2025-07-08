@@ -1,113 +1,91 @@
+require('dotenv').config(); // Load environment variables from .env file
 const express = require('express');
-const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
-const bodyParser = require('body-parser');
 const cors = require('cors');
-require('dotenv').config();
+const nodemailer = require('nodemailer');
 
 const app = express();
+const PORT = process.env.PORT || 3000; // Use port from environment variable or default to 3000
 
-// ✅ Add this CORS setup just below "const app = express();"
-const allowedOrigins = [
-  'https://comforting-pegasus-3ff5b2.netlify.app',
-  'https://harmonious-crumble-2ca9ba.netlify.app'
-];
+// Middleware
+app.use(cors()); // Enable CORS for all origins (adjust for production)
+app.use(express.json()); // Parse JSON request bodies
 
-app.use(cors({
-  origin: function (origin, callback) {
-    // Allow requests with no origin (like Postman) or valid Netlify sites
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error('CORS not allowed for this origin: ' + origin));
-    }
-  },
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
-}));
+// Simple in-memory data store for demonstration purposes
+const checklists = [];
 
-
-// ✅ FIXED: Allow frontend requests from Netlify domain
-
-
-// ✅ Middleware
-app.use(bodyParser.json());
-const path = require('path');
-
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'home.html'));
-});
-
-// ✅ Connect to MongoDB
-mongoose.connect(process.env.MONGO_URI)
-  .then(() => console.log('✅ MongoDB connected successfully'))
-  .catch(err => {
-    console.error('❌ MongoDB connection error:', err);
-    process.exit(1);
-  });
-
-// ✅ Mongoose Model
-const Checklist = mongoose.model('Checklist', new mongoose.Schema({
-  room: { type: String, required: true },
-  date: { type: String, required: true },
-  items: { type: Object, required: true },
-}, { timestamps: true }));
-
-// ✅ Email Transporter
+// Nodemailer transporter setup
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
-  },
+    service: 'gmail', // You can use other services or SMTP options
+    auth: {
+        user: process.env.EMAIL_USER, // Your email address from .env
+        pass: process.env.EMAIL_PASS, // Your email app password from .env
+    },
 });
 
-// ✅ Submit checklist route
+// POST endpoint to submit the checklist
 app.post('/submit-checklist', async (req, res) => {
-  const { room, date, items } = req.body;
+    const { room, date, items } = req.body;
 
-  if (!room || !date || !items) {
-    return res.status(400).json({ message: 'Missing required fields: room, date, or items.' });
-  }
-
-  const missingItems = Object.entries(items).filter(([_, v]) => v === 'no');
-  const checklist = new Checklist({ room, date, items });
-
-  try {
-    await checklist.save();
-
-    if (missingItems.length > 0) {
-      const itemList = missingItems.map(([k]) => `- ${k}`).join('\n');
-      const mailOptions = {
-        from: process.env.EMAIL_USER,
-        to: process.env.TO_NOTIFY,
-        subject: `Room ${room} Missing Items - ${date}`,
-        text: `Missing items in Room ${room} on ${date}:\n\n${itemList}\n\nChecklist ID: ${checklist._id}`,
-      };
-
-      await transporter.sendMail(mailOptions);
+    if (!room || !date || !items) {
+        return res.status(400).json({ message: 'Missing required fields: room, date, or items.' });
     }
 
-    res.status(201).json({
-      message: 'Checklist submitted successfully.',
-      checklistId: checklist._id,
-      emailSent: missingItems.length > 0
+    const newChecklistEntry = {
+        id: Date.now(), // Simple unique ID
+        room,
+        date,
+        items,
+        timestamp: new Date(),
+    };
+
+    checklists.push(newChecklistEntry);
+    console.log('New checklist entry:', newChecklistEntry);
+
+    // Check for missing items (marked "no")
+    const missingItems = Object.entries(items).filter(([, value]) => value === 'no');
+
+    let emailSent = false;
+    if (missingItems.length > 0) {
+        const missingItemsList = missingItems.map(([key]) => key.replace(/_/g, ' ')).join(', ');
+        const mailOptions = {
+            from: process.env.EMAIL_USER,
+            to: process.env.EMAIL_USER, // Send email to yourself or a designated hotel staff email
+            subject: `Urgent: Missing Items in Room ${room} - ${date}`,
+            html: `
+                <p>Dear Hotel Staff,</p>
+                <p>The following items were reported missing or not in place for Room <strong>${room}</strong> on <strong>${date}</strong>:</p>
+                <ul>
+                    ${missingItems.map(([key, value]) => `<li>${key.replace(/_/g, ' ')}: ${value}</li>`).join('')}
+                </ul>
+                <p>Please attend to this matter promptly.</p>
+                <p>Regards,</p>
+                <p>Hotel Checklist System</p>
+            `,
+        };
+
+        try {
+            await transporter.sendMail(mailOptions);
+            console.log('Email sent successfully for missing items.');
+            emailSent = true;
+        } catch (error) {
+            console.error('Error sending email:', error);
+            // Even if email fails, the checklist submission can still be successful
+        }
+    }
+
+    res.status(200).json({
+        message: 'Checklist submitted successfully!',
+        emailSent: emailSent,
+        checklist: newChecklistEntry, // Optionally send back the stored entry
     });
-  } catch (error) {
-    console.error('❌ Error submitting checklist or sending email:', error);
-    res.status(500).json({ message: 'Failed to submit checklist.', error: error.message });
-  }
 });
 
-// ✅ Health check route
-app.get('/health', (req, res) => {
-  if (mongoose.connection.readyState === 1) {
-    res.status(200).json({ status: 'OK', database: 'connected' });
-  } else {
-    res.status(503).json({ status: 'Service Unavailable', database: 'disconnected' });
-  }
+// Basic GET endpoint to view all checklists (for testing/debugging)
+app.get('/checklists', (req, res) => {
+    res.status(200).json(checklists);
 });
 
-// ✅ Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+// Start the server
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
