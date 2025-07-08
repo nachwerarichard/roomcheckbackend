@@ -118,6 +118,19 @@ app.put('/checklists/:id', (req, res) => {
   res.status(200).json({ message: 'Checklist updated successfully', checklist: checklists[index] });
 });
 
+
+app.delete('/checklists/:id', async (req, res) => {
+  try {
+    const deleted = await Checklist.findByIdAndDelete(req.params.id);
+    if (!deleted) {
+      return res.status(404).json({ message: 'Checklist not found' });
+    }
+    res.status(200).json({ message: 'Checklist deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: 'Failed to delete', error: err.message });
+  }
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
