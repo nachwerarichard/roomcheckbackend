@@ -1,0 +1,53 @@
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f4f4f4;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 600px;
+      background: #fff;
+      padding: 2rem;
+      margin: auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    .btn { padding: 5px 10px; margin: 2px; cursor: pointer; }
+    .auth-box { max-width: 300px; margin: auto; border: 1px solid #ccc; padding: 1rem; }
+    h1 {
+      text-align: center;
+    }
+    .item {
+      margin: 1rem 0;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.3rem;
+      font-weight: bold;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    #message {
+      margin-top: 1rem;
+      font-weight: bold;
+      text-align: center;
+    }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f4f4f4; }
+    .edit-row input { width: 80px; }
+    .btn { padding: 5px 10px; cursor: pointer; }
+    /* Hide main content until login */
+    #mainApp {
+      display: none;
+    }
+  
