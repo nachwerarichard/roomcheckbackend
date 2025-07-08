@@ -67,7 +67,9 @@
                 <input type="radio" name="bed_linen" value="no" required /> No
             </div>
 
-            <button type="submit">Submit Checklist</button>
+            < div class="md:col-span-2 flex justify-center">
+             <button type="submit" class="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700">Submit</button>
+            </div>
         </form>
 
         <p id="message"></p>
@@ -75,7 +77,6 @@
       <h2>Room Checklists</h2>
       <input type="search" id="searchInput" placeholder="Search room or date..." />
       <button class="btn" onclick="exportToExcel()">Export to Excel</button>
-      <button class="btn" onclick="window.print()">Print</button>
       <table id="checklistTable">
         <thead>
           <tr>
