@@ -7,12 +7,23 @@ require('dotenv').config();
 
 const app = express();
 
+// ✅ Add this CORS setup just below "const app = express();"
+app.use(cors({
+  origin: 'https://comforting-pegasus-3ff5b2.netlify.app',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type'],
+}));
+
 // ✅ FIXED: Allow frontend requests from Netlify domain
 
 
 // ✅ Middleware
 app.use(bodyParser.json());
-app.use(express.static('public'));
+const path = require('path');
+
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'home.html'));
+});
 
 // ✅ Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
