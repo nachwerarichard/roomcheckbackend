@@ -5,6 +5,11 @@ const bodyParser = require('body-parser');
 const cors = require('cors');
 require('dotenv').config();
 
+// allow all origins OR specify your frontend URL for security
+app.use(cors({
+  origin: 'https://comforting-pegasus-3ff5b2.netlify.app/'  // Replace with actual frontend domain
+}));
+
 const app = express();
 app.use(cors());
 app.use(bodyParser.json());
