@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const nodemailer = require('nodemailer');
 const mongoose = require('mongoose');
-const Checklist = require('./models/Checklist');
+const Checklist = require('./checklist');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
