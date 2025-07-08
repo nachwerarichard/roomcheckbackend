@@ -9,7 +9,7 @@ const app = express();
 
 // ✅ Add this CORS setup just below "const app = express();"
 app.use(cors({
-  origin: 'https://comforting-pegasus-3ff5b2.netlify.app',
+  origin: 'https://harmonious-crumble-2ca9ba.netlify.app/',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type'],
 }));
