@@ -8,11 +8,24 @@ require('dotenv').config();
 const app = express();
 
 // ✅ Add this CORS setup just below "const app = express();"
+const allowedOrigins = [
+  'https://comforting-pegasus-3ff5b2.netlify.app',
+  'https://harmonious-crumble-2ca9ba.netlify.app'
+];
+
 app.use(cors({
-  origin: 'https://harmonious-crumble-2ca9ba.netlify.app/',
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like Postman) or valid Netlify sites
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('CORS not allowed for this origin: ' + origin));
+    }
+  },
   methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type'],
+  allowedHeaders: ['Content-Type']
 }));
+
 
 // ✅ FIXED: Allow frontend requests from Netlify domain
 
