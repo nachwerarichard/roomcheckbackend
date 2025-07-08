@@ -109,6 +109,7 @@
         <p id="message"></p>
 
       <h2>Room Checklists</h2>
+<input type="search" id="searchInput" placeholder="Search room or date..." />
 
 <table id="checklistTable">
   <thead>
@@ -123,6 +124,11 @@
     <!-- Dynamically inserted rows -->
   </tbody>
 </table>
+      <div class="pagination">
+  <button id="prevBtn" class="btn">Prev</button>
+  <span id="pageInfo"></span>
+  <button id="nextBtn" class="btn">Next</button>
+</div>
     </div>
 
     <script>
@@ -174,33 +180,57 @@
             })();
         });
     </script>
-  <script>const backendURL = 'https://roomcheckbackend.onrender.com';
+  <script>
+const backendURL = 'https://roomcheckbackend.onrender.com';
+let allChecklists = [];
+let currentPage = 1;
+const rowsPerPage = 5;
 
-// Load all checklists
 async function loadChecklists() {
   const res = await fetch(`${backendURL}/checklists`);
-  const checklists = await res.json();
+  allChecklists = await res.json();
+  renderTable();
+}
 
+function renderTable() {
   const tbody = document.getElementById('checklistBody');
-  tbody.innerHTML = ''; // Clear previous
+  const search = document.getElementById('searchInput').value.toLowerCase();
 
-  checklists.forEach(entry => {
+  // Filter data
+  const filtered = allChecklists.filter(entry =>
+    entry.room.toLowerCase().includes(search) ||
+    entry.date.toLowerCase().includes(search)
+  );
+
+  // Pagination
+  const start = (currentPage - 1) * rowsPerPage;
+  const paginated = filtered.slice(start, start + rowsPerPage);
+
+  tbody.innerHTML = '';
+  paginated.forEach(entry => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td>${entry.room}</td>
       <td>${entry.date}</td>
       <td>${Object.entries(entry.items).map(([k,v]) => `${k}: ${v}`).join(', ')}</td>
-      <td><button class="btn" onclick='editChecklist(${JSON.stringify(entry)})'>Edit</button></td>
+      <td>
+        <button class="btn" onclick='editChecklist(${JSON.stringify(entry)})'>Edit</button>
+        <button class="btn" onclick='deleteChecklist(${entry.id || `"${entry._id}"`})'>Delete</button>
+      </td>
     `;
     tbody.appendChild(tr);
   });
+
+  // Update pagination
+  document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${Math.ceil(filtered.length / rowsPerPage)}`;
+  document.getElementById('prevBtn').disabled = currentPage === 1;
+  document.getElementById('nextBtn').disabled = start + rowsPerPage >= filtered.length;
 }
 
-// Edit a checklist row
 function editChecklist(entry) {
   const tbody = document.getElementById('checklistBody');
   tbody.innerHTML = `
-    <tr class="edit-row">
+    <tr>
       <td><input id="editRoom" value="${entry.room}" /></td>
       <td><input id="editDate" type="date" value="${entry.date}" /></td>
       <td>
@@ -213,22 +243,22 @@ function editChecklist(entry) {
         `).join('')}
       </td>
       <td>
-        <button class="btn" onclick="saveChecklist(${entry.id})">Save</button>
-        <button class="btn" onclick="loadChecklists()">Cancel</button>
+        <button class="btn" onclick="saveChecklist('${entry.id || entry._id}')">Save</button>
+        <button class="btn" onclick="renderTable()">Cancel</button>
       </td>
     </tr>
   `;
 }
 
-// Save the edited checklist
 async function saveChecklist(id) {
   const room = document.getElementById('editRoom').value;
   const date = document.getElementById('editDate').value;
 
-  const itemKeys = Array.from(document.querySelectorAll('[id^="item-"]')).map(el => el.id.replace('item-', ''));
+  const itemElements = document.querySelectorAll('[id^="item-"]');
   const items = {};
-  itemKeys.forEach(key => {
-    items[key] = document.getElementById(`item-${key}`).value;
+  itemElements.forEach(el => {
+    const key = el.id.replace('item-', '');
+    items[key] = el.value;
   });
 
   const res = await fetch(`${backendURL}/checklists/${id}`, {
@@ -239,10 +269,37 @@ async function saveChecklist(id) {
 
   const result = await res.json();
   alert(result.message);
-  loadChecklists();
+  await loadChecklists();
 }
 
-loadChecklists(); // Load on page load
+async function deleteChecklist(id) {
+  if (!confirm("Are you sure you want to delete this checklist?")) return;
+
+  const res = await fetch(`${backendURL}/checklists/${id}`, {
+    method: 'DELETE'
+  });
+
+  const result = await res.json();
+  alert(result.message);
+  await loadChecklists();
+}
+
+document.getElementById('searchInput').addEventListener('input', () => {
+  currentPage = 1;
+  renderTable();
+});
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+  currentPage--;
+  renderTable();
+});
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+  currentPage++;
+  renderTable();
+});
+
+loadChecklists();
 </script>
 </body>
 </html>
