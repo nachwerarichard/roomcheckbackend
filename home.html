@@ -45,6 +45,12 @@
       font-weight: bold;
       text-align: center;
     }
+    body { font-family: Arial; padding: 2rem; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background-color: #f4f4f4; }
+    .edit-row input { width: 80px; }
+    .btn { padding: 5px 10px; cursor: pointer; }
   </style>
 </head>
 <body>
@@ -101,6 +107,22 @@
         </form>
 
         <p id="message"></p>
+
+      <h2>Room Checklists</h2>
+
+<table id="checklistTable">
+  <thead>
+    <tr>
+      <th>Room</th>
+      <th>Date</th>
+      <th>Items</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody id="checklistBody">
+    <!-- Dynamically inserted rows -->
+  </tbody>
+</table>
     </div>
 
     <script>
@@ -152,6 +174,76 @@
             })();
         });
     </script>
+  <script>const backendURL = 'https://roomcheckbackend.onrender.com';
+
+// Load all checklists
+async function loadChecklists() {
+  const res = await fetch(`${backendURL}/checklists`);
+  const checklists = await res.json();
+
+  const tbody = document.getElementById('checklistBody');
+  tbody.innerHTML = ''; // Clear previous
+
+  checklists.forEach(entry => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${entry.room}</td>
+      <td>${entry.date}</td>
+      <td>${Object.entries(entry.items).map(([k,v]) => `${k}: ${v}`).join(', ')}</td>
+      <td><button class="btn" onclick='editChecklist(${JSON.stringify(entry)})'>Edit</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+// Edit a checklist row
+function editChecklist(entry) {
+  const tbody = document.getElementById('checklistBody');
+  tbody.innerHTML = `
+    <tr class="edit-row">
+      <td><input id="editRoom" value="${entry.room}" /></td>
+      <td><input id="editDate" type="date" value="${entry.date}" /></td>
+      <td>
+        ${Object.keys(entry.items).map(key => `
+          ${key}: 
+          <select id="item-${key}">
+            <option value="yes" ${entry.items[key] === 'yes' ? 'selected' : ''}>yes</option>
+            <option value="no" ${entry.items[key] === 'no' ? 'selected' : ''}>no</option>
+          </select><br>
+        `).join('')}
+      </td>
+      <td>
+        <button class="btn" onclick="saveChecklist(${entry.id})">Save</button>
+        <button class="btn" onclick="loadChecklists()">Cancel</button>
+      </td>
+    </tr>
+  `;
+}
+
+// Save the edited checklist
+async function saveChecklist(id) {
+  const room = document.getElementById('editRoom').value;
+  const date = document.getElementById('editDate').value;
+
+  const itemKeys = Array.from(document.querySelectorAll('[id^="item-"]')).map(el => el.id.replace('item-', ''));
+  const items = {};
+  itemKeys.forEach(key => {
+    items[key] = document.getElementById(`item-${key}`).value;
+  });
+
+  const res = await fetch(`${backendURL}/checklists/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ room, date, items })
+  });
+
+  const result = await res.json();
+  alert(result.message);
+  loadChecklists();
+}
+
+loadChecklists(); // Load on page load
+</script>
 </body>
 </html>
 </html>
