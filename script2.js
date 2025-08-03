@@ -91,15 +91,54 @@ async function login() {
 // --- Room Checklist Functionality ---
 
 /**
- * Exports the data from the checklist table to an Excel file.
+ * Exports the data from the checklist table (Room, Date, Items) to an Excel file.
  */
 function exportToExcel() {
-    const table = document.getElementById("checklistTable");
-    const ws = XLSX.utils.table_to_sheet(table);
+    const dataToExport = allChecklists.map(entry => ({
+        'Room': entry.room,
+        'Date': entry.date,
+        'Items': Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Checklist Data");
     XLSX.writeFile(wb, "Hotel_Room_Checklist.xlsx");
 }
+
+/**
+ * Prints the data from the checklist table (Room, Date, Items) in a new window.
+ */
+function printChecklists() {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Room Checklist</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: sans-serif; margin: 20px; }');
+    printWindow.document.write('h1 { text-align: center; margin-bottom: 20px; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }');
+    printWindow.document.write('th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }');
+    printWindow.document.write('th { background-color: #f2f2f2; }');
+    printWindow.document.write('</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write('<h1>Hotel Room Checklist</h1>');
+    printWindow.document.write('<table>');
+    printWindow.document.write('<thead><tr><th>Room</th><th>Date</th><th>Items</th></tr></thead>');
+    printWindow.document.write('<tbody>');
+
+    allChecklists.forEach(entry => {
+        printWindow.document.write('<tr>');
+        printWindow.document.write(`<td>${entry.room}</td>`);
+        printWindow.document.write(`<td>${entry.date}</td>`);
+        printWindow.document.write(`<td>${Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')}</td>`);
+        printWindow.document.write('</tr>');
+    });
+
+    printWindow.document.write('</tbody></table>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+}
+
 
 // Event listener for checklist form submission
 document.getElementById('checklistForm').addEventListener('submit', async function (e) {
@@ -158,6 +197,7 @@ async function loadChecklists() {
         }
         allChecklists = await res.json();
         renderChecklistTable();
+        renderMissingItemsSummary(); // Call to render missing items summary
     } catch (err) {
         console.error('Error loading checklists:', err);
         displayMessage('message', 'Failed to load checklists.', true);
@@ -327,6 +367,74 @@ document.getElementById('nextBtn').addEventListener('click', () => {
         renderChecklistTable();
     }
 });
+
+// --- Missing Items Summary Functionality ---
+/**
+ * Renders a summary of missing items and the rooms they are missing from for a given date.
+ */
+function renderMissingItemsSummary() {
+    const summaryContainer = document.getElementById('missingItemsSummary');
+    if (!summaryContainer) return; // Exit if the container doesn't exist (e.g., before login)
+
+    const filterDateInput = document.getElementById('missingItemsDateFilter').value;
+    let checklistsForSummary = allChecklists;
+
+    if (filterDateInput) {
+        const selectedDate = new Date(filterDateInput);
+        selectedDate.setHours(0, 0, 0, 0);
+
+        checklistsForSummary = allChecklists.filter(entry => {
+            const entryDate = new Date(entry.date);
+            entryDate.setHours(0, 0, 0, 0);
+            return entryDate.getTime() === selectedDate.getTime();
+        });
+    }
+
+    const missingItemsCount = {}; // { item: count }
+    const missingItemsRooms = {}; // { item: [room1, room2] }
+
+    checklistsForSummary.forEach(entry => {
+        for (const itemKey in entry.items) {
+            if (entry.items[itemKey] === 'no') {
+                const formattedItem = itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                missingItemsCount[formattedItem] = (missingItemsCount[formattedItem] || 0) + 1;
+                if (!missingItemsRooms[formattedItem]) {
+                    missingItemsRooms[formattedItem] = [];
+                }
+                missingItemsRooms[formattedItem].push(entry.room);
+            }
+        }
+    });
+
+    let summaryHtml = '<h3 class="text-xl font-semibold mb-3 text-gray-800">Missing Items Summary</h3>';
+    if (Object.keys(missingItemsCount).length === 0) {
+        summaryHtml += '<p class="text-gray-600">No missing items found for the selected date.</p>';
+    } else {
+        summaryHtml += '<ul class="list-disc pl-5 space-y-2">';
+        for (const item in missingItemsCount) {
+            summaryHtml += `<li><span class="font-semibold">${item}</span>: ${missingItemsCount[item]} missing. (Rooms: ${missingItemsRooms[item].join(', ')})</li>`;
+        }
+        summaryHtml += '</ul>';
+    }
+
+    summaryContainer.innerHTML = summaryHtml;
+}
+
+// Event listeners for missing items date filter
+document.addEventListener('DOMContentLoaded', () => {
+    const missingItemsDateFilter = document.getElementById('missingItemsDateFilter');
+    if (missingItemsDateFilter) {
+        missingItemsDateFilter.addEventListener('change', renderMissingItemsSummary);
+    }
+    const clearMissingItemsDateFilterBtn = document.getElementById('clearMissingItemsDateFilter');
+    if (clearMissingItemsDateFilterBtn) {
+        clearMissingItemsDateFilterBtn.addEventListener('click', () => {
+            missingItemsDateFilter.value = '';
+            renderMissingItemsSummary();
+        });
+    }
+});
+
 
 // --- Housekeeping Report Functionality ---
 
