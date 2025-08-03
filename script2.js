@@ -545,7 +545,8 @@ function exportStatusReportsToExcel() {
         'Room': report.room,
         'Category': report.category,
         'Status': report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format status for readability
-        'Remarks': report.remarks
+        'Remarks': report.remarks,
+        'Date & Time': report.dateTime
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport); // Use json_to_sheet for structured data
