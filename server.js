@@ -19,9 +19,12 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 // Middleware
-app.use(cors());
 app.use(express.json());
-
+const corsOptions = {
+  origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
+  optionsSuccessStatus: 200 // For legacy browsers
+};
+app.use(cors(corsOptions));
 // --- Mongoose Schemas and Models ---
 
 // Checklist Schema and Model (from your original code)
