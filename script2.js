@@ -387,6 +387,22 @@ function clearStatusDateFilter() {
     renderStatusReportTable();
 }
 
+// Function to export Housekeeping Reports to Excel (specific columns)
+function exportStatusReportsToExcel() {
+    // Prepare data with only the desired columns
+    const dataToExport = filteredStatusReports.map(report => ({
+        'Room': report.room,
+        'Category': report.category,
+        'Status': report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format status for readability
+        'Remarks': report.remarks
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport); // Use json_to_sheet for structured data
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Housekeeping Reports");
+    XLSX.writeFile(wb, "Hotel_Housekeeping_Reports.xlsx");
+}
+
 
 function editStatusReport(id) {
     const reportToEdit = allStatusReports.find(report => report._id === id);
