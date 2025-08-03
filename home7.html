@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <title>Hotel Management System</title>
+    <style>
+        /* Custom styles for mobile table experience */
+        @media (max-width: 768px) {
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+            thead tr {
+                position: absolute;
+                top: -9999px;
+                left: -9999px;
+            }
+            tr { 
+                border: 1px solid #e5e7eb; 
+                margin-bottom: 0.75rem; 
+                border-radius: 0.5rem; 
+                overflow: hidden; 
+            }
+            td {
+                border: none;
+                border-bottom: 1px solid #e5e7eb;
+                position: relative;
+                padding-left: 50%;
+                text-align: right;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            td:before {
+                position: absolute;
+                top: 0;
+                left: 6px;
+                width: 45%;
+                padding-right: 10px;
+                white-space: nowrap;
+                text-align: left;
+                font-weight: bold;
+                color: #4b5563;
+            }
+            /* Data labels for checklist table */
+            #checklistTable td:nth-of-type(1):before { content: "Room:"; }
+            #checklistTable td:nth-of-type(2):before { content: "Date:"; }
+            #checklistTable td:nth-of-type(3):before { content: "Items:"; }
+            #checklistTable td:nth-of-type(4):before { content: "Actions:"; }
+            
+            /* Data labels for status report table */
+            #statusReportTable td:nth-of-type(1):before { content: "Room:"; }
+            #statusReportTable td:nth-of-type(2):before { content: "Category:"; }
+            #statusReportTable td:nth-of-type(3):before { content: "Status:"; }
+            #statusReportTable td:nth-of-type(4):before { content: "Remarks:"; }
+            #statusReportTable td:nth-of-type(5):before { content: "Date & Time:"; }
+            #statusReportTable td:nth-of-type(6):before { content: "Actions:"; }
+
+            /* Adjust padding for edit inputs in mobile table */
+            td input, td select, td textarea {
+                width: 100%;
+                padding: 0.25rem;
+            }
+        }
+        /* Custom styles for sidebar */
+        .sidebar {
+            width: 256px;
+        }
+        @media (max-width: 1024px) {
+            .sidebar {
+                width: 100%;
+                height: auto;
+                position: relative;
+                border-right: none;
+                padding: 0.75rem;
+            }
+            .sidebar-content {
+                flex-direction: row;
+                justify-content: space-around;
+                align-items: center;
+            }
+            .sidebar-nav-item {
+                flex-grow: 1;
+                text-align: center;
+                padding: 0.75rem;
+            }
+            .sidebar-logo, .sidebar-logout {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 text-gray-800 font-sans flex flex-col lg:flex-row min-h-screen">
+
+    <div id="loginSection" class="min-h-screen flex items-center justify-center p-4 w-full">
+        <div class="bg-white p-8 rounded-lg shadow-2xl w-full max-w-md">
+            <div class="flex flex-col items-center mb-6">
+                <div class="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center mb-4">
+                    <i class="fas fa-hotel text-white text-3xl"></i>
+                </div>
+                <h2 class="text-3xl font-bold text-gray-900">Admin Login</h2>
+            </div>
+            <div class="space-y-6">
+                <div>
+                    <label for="username" class="block text-sm font-medium text-gray-700">Username</label>
+                    <input type="text" id="username" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter username" />
+                </div>
+                <div>
+                    <label for="password" class="block text-sm font-medium text-gray-700">Password</label>
+                    <input type="password" id="password" class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500" placeholder="Enter password" />
+                </div>
+                <button onclick="login()" class="w-full bg-blue-600 text-white font-semibold px-4 py-3 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out shadow-lg">Login</button>
+                <p id="loginMsg" class="text-red-600 text-center text-sm mt-3"></p>
+            </div>
+        </div>
+    </div>
+
+    <div id="mainApp" class="hidden flex flex-grow">
+        <aside class="sidebar bg-gray-800 text-white shadow-xl flex flex-col p-6 border-r border-gray-700 h-full lg:h-screen">
+            <div class="sidebar-logo flex items-center mb-10">
+                <i class="fas fa-hotel text-blue-400 text-2xl mr-3"></i>
+                <h2 class="text-xl font-bold text-white">Hotel Management</h2>
+            </div>
+            <nav class="sidebar-content flex-grow flex flex-col space-y-2">
+                <button id="tabChecklist" class="sidebar-nav-item flex items-center px-4 py-3 rounded-md text-lg font-medium bg-blue-600 hover:bg-blue-700 transition duration-300">
+                    <i class="fas fa-clipboard-list mr-3"></i> Room Checklist
+                </button>
+                <button id="tabHousekeeping" class="sidebar-nav-item flex items-center px-4 py-3 rounded-md text-lg font-medium text-gray-300 hover:bg-gray-700 hover:text-white transition duration-300">
+                    <i class="fas fa-bed mr-3"></i> Housekeeping Report
+                </button>
+            </nav>
+            <div class="sidebar-logout mt-auto">
+                <button onclick="logout()" class="w-full flex items-center justify-center px-4 py-3 rounded-md text-lg font-medium text-white bg-red-600 hover:bg-red-700 transition duration-300">
+                    <i class="fas fa-sign-out-alt mr-2"></i> Logout
+                </button>
+            </div>
+        </aside>
+
+        <main class="flex-grow p-4 sm:p-8 overflow-y-auto">
+            <h1 class="text-4xl font-extrabold mb-8 text-center text-gray-900 lg:hidden">Hotel Management Dashboard</h1>
+
+            <div id="roomChecklistSection" class="tab-content bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Hotel Room Checklist</h2>
+
+                <form id="checklistForm" class="space-y-5 p-6 border border-gray-200 rounded-lg mb-8">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label for="room" class="block font-medium text-gray-700">Room Number:</label>
+                            <select id="room" name="room" required class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Select a Room --</option>
+                                <option value="101">Room 101</option>
+                                <option value="102">Room 102</option>
+                                <option value="103">Room 103</option>
+                                <option value="201">Room 201</option>
+                                <option value="202">Room 202</option>
+                                <option value="301">Room 301</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="date" class="block font-medium text-gray-700">Date:</label>
+                            <input type="date" id="date" name="date" required class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                        <div class="flex flex-col">
+                            <p class="font-medium text-gray-700 mb-2">Towels:</p>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center"><input type="radio" name="towels" value="yes" required class="mr-1 text-blue-600"> Yes</label>
+                                <label class="inline-flex items-center"><input type="radio" name="towels" value="no" required class="mr-1 text-blue-600"> No</label>
+                            </div>
+                        </div>
+                        <div class="flex flex-col">
+                            <p class="font-medium text-gray-700 mb-2">Soap:</p>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center"><input type="radio" name="soap" value="yes" required class="mr-1 text-blue-600"> Yes</label>
+                                <label class="inline-flex items-center"><input type="radio" name="soap" value="no" required class="mr-1 text-blue-600"> No</label>
+                            </div>
+                        </div>
+                        <div class="flex flex-col">
+                            <p class="font-medium text-gray-700 mb-2">TV Remote:</p>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center"><input type="radio" name="tv_remote" value="yes" required class="mr-1 text-blue-600"> Yes</label>
+                                <label class="inline-flex items-center"><input type="radio" name="tv_remote" value="no" required class="mr-1 text-blue-600"> No</label>
+                            </div>
+                        </div>
+                        <div class="flex flex-col">
+                            <p class="font-medium text-gray-700 mb-2">Keycard:</p>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center"><input type="radio" name="keycard" value="yes" required class="mr-1 text-blue-600"> Yes</label>
+                                <label class="inline-flex items-center"><input type="radio" name="keycard" value="no" required class="mr-1 text-blue-600"> No</label>
+                            </div>
+                        </div>
+                        <div class="flex flex-col">
+                            <p class="font-medium text-gray-700 mb-2">Clean Bed Linen:</p>
+                            <div class="flex space-x-4">
+                                <label class="inline-flex items-center"><input type="radio" name="bed_linen" value="yes" required class="mr-1 text-blue-600"> Yes</label>
+                                <label class="inline-flex items-center"><input type="radio" name="bed_linen" value="no" required class="mr-1 text-blue-600"> No</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-green-600 text-white font-semibold px-6 py-3 rounded-md hover:bg-green-700 transition duration-300 ease-in-out shadow-md">Submit Checklist</button>
+                </form>
+                
+                <p id="message" class="text-center text-green-600 mt-4 mb-8 text-lg font-medium"></p>
+
+                <div class="p-6 border border-gray-200 rounded-lg">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-800">Room Checklists</h3>
+                    <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
+                        <input type="search" id="searchInput" placeholder="Search room or date..." class="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                            <button onclick="exportToExcel()" class="w-full sm:w-auto bg-yellow-500 text-white font-semibold px-6 py-2 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out shadow-md">Export</button>
+                            <button onclick="window.print()" class="w-full sm:w-auto bg-blue-500 text-white font-semibold px-6 py-2 rounded-md hover:bg-blue-600 transition duration-300 ease-in-out shadow-md">Print</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-lg border border-gray-200">
+                        <table id="checklistTable" class="min-w-full table-auto">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Room</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Items</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="checklistBody" class="bg-white divide-y divide-gray-200 text-sm">
+                                </tbody>
+                        </table>
+                    </div>
+
+                    <div class="flex justify-center items-center gap-4 mt-6">
+                        <button id="prevBtn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out shadow-sm">Prev</button>
+                        <span id="pageInfo" class="font-medium text-gray-700"></span>
+                        <button id="nextBtn" class="bg-gray-500 text-white px-4 py-2 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out shadow-sm">Next</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="housekeepingReportSection" class="tab-content hidden bg-white p-6 rounded-xl shadow-lg">
+                <h2 class="text-3xl font-bold mb-6 text-center text-gray-800">Housekeeping Room Status Report</h2>
+
+                <form id="statusReportForm" class="space-y-5 p-6 border border-gray-200 rounded-lg mb-8">
+                    <div>
+                        <label for="reportRoom" class="block font-medium text-gray-700">Room Name:</label>
+                        <input type="text" id="reportRoom" name="room" required class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 101, Suite A" />
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                        <div>
+                            <label for="reportCategory" class="block font-medium text-gray-700">Category:</label>
+                            <select id="reportCategory" name="category" required class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Select Category --</option>
+                                <option value="delux1">Delux 1</option>
+                                <option value="delux2">Delux 2</option>
+                                <option value="standard">Standard</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label for="reportStatus" class="block font-medium text-gray-700">Status:</label>
+                            <select id="reportStatus" name="status" required class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <option value="">-- Select Status --</option>
+                                <option value="arrival">Arrival</option>
+                                <option value="occupied">Occupied</option>
+                                <option value="departure">Departure</option>
+                                <option value="vacant_ready">Vacant Ready</option>
+                                <option value="vacant_not_ready">Vacant but not Ready</option>
+                                <option value="out_of_order">Out of Order</option>
+                                <option value="out_of_service">Out of Service</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label for="reportRemarks" class="block font-medium text-gray-700">Remarks:</label>
+                        <textarea id="reportRemarks" name="remarks" class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" rows="3" placeholder="Any additional notes..."></textarea>
+                    </div>
+
+                    <div>
+                        <label for="reportDateTime" class="block font-medium text-gray-700">Date and Time:</label>
+                        <input type="datetime-local" id="reportDateTime" name="dateTime" required class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    </div>
+
+                    <button type="submit" class="w-full bg-blue-600 text-white font-semibold px-6 py-3 rounded-md hover:bg-blue-700 transition duration-300 ease-in-out shadow-md">Submit Report</button>
+                </form>
+                
+                <p id="statusMessage" class="text-center text-green-600 mt-4 mb-8 text-lg font-medium"></p>
+
+                <div class="p-6 border border-gray-200 rounded-lg">
+                    <h3 class="text-2xl font-semibold mb-4 text-gray-800">Housekeeping Reports</h3>
+                    <div class="flex flex-col sm:flex-row items-center gap-4 mb-4">
+                        <label for="filterDate" class="block font-medium text-gray-700">Filter by Date:</label>
+                        <input type="date" id="filterDate" class="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                        <div class="flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
+                            <button onclick="filterStatusReportsByDate()" class="w-full sm:w-auto bg-purple-600 text-white font-semibold px-6 py-2 rounded-md hover:bg-purple-700 transition duration-300 ease-in-out shadow-md">Apply</button>
+                            <button onclick="clearStatusDateFilter()" class="w-full sm:w-auto bg-gray-500 text-white font-semibold px-6 py-2 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out shadow-md">Clear</button>
+                            <button onclick="exportStatusReportsToExcel()" class="w-full sm:w-auto bg-yellow-500 text-white font-semibold px-6 py-2 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out shadow-md">Export</button>
+                            <button onclick="printStatusReports()" class="w-full sm:w-auto bg-blue-500 text-white font-semibold px-6 py-2 rounded-md hover:bg-blue-600 transition duration-300 ease-in-out shadow-md">Print</button>
+                        </div>
+                    </div>
+
+                    <div class="overflow-x-auto rounded-lg border border-gray-200">
+                        <table id="statusReportTable" class="min-w-full table-auto">
+                            <thead class="bg-gray-100">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Room</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Category</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Status</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Remarks</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Date & Time</th>
+                                    <th class="px-4 py-3 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider border">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="statusReportBody" class="bg-white divide-y divide-gray-200 text-sm">
+                                </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="script2.js"></script>
+    <script>
+        // Additional JavaScript to handle the new layout
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabChecklistBtn = document.getElementById('tabChecklist');
+            const tabHousekeepingBtn = document.getElementById('tabHousekeeping');
+            const checklistSection = document.getElementById('roomChecklistSection');
+            const housekeepingSection = document.getElementById('housekeepingReportSection');
+
+            function setActiveTab(activeTab, inactiveTab) {
+                activeTab.classList.add('bg-blue-600', 'text-white');
+                activeTab.classList.remove('bg-gray-700', 'text-gray-300', 'hover:bg-gray-700', 'hover:text-white');
+                activeTab.classList.remove('bg-gray-200', 'text-gray-700', 'hover:bg-gray-300'); // Remove old styles if any
+                activeTab.classList.add('hover:bg-blue-700');
+
+                inactiveTab.classList.add('bg-gray-700', 'text-gray-300', 'hover:bg-gray-700', 'hover:text-white');
+                inactiveTab.classList.remove('bg-blue-600', 'hover:bg-blue-700', 'text-white');
+            }
+
+            tabChecklistBtn.addEventListener('click', () => {
+                checklistSection.classList.remove('hidden');
+                housekeepingSection.classList.add('hidden');
+                setActiveTab(tabChecklistBtn, tabHousekeepingBtn);
+            });
+
+            tabHousekeepingBtn.addEventListener('click', () => {
+                housekeepingSection.classList.remove('hidden');
+                checklistSection.classList.add('hidden');
+                setActiveTab(tabHousekeepingBtn, tabChecklistBtn);
+            });
+            
+            // Initial active state
+            setActiveTab(tabChecklistBtn, tabHousekeepingBtn);
+        });
+    </script>
+</body>
+</html>
