@@ -1,5 +1,5 @@
 // script.js
-const backendURL = 'https://roomcheckbackend-c74g.onrender.com'; // Ensure this is correct
+const backendURL = 'https://roomcheckbackend.onrender.com'; // Ensure this is correct
 let allChecklists = [];
 let currentPage = 1;
 const rowsPerPage = 5;
@@ -12,6 +12,11 @@ const tabHousekeepingBtn = document.getElementById('tabHousekeeping');
 const roomChecklistSection = document.getElementById('roomChecklistSection');
 const housekeepingReportSection = document.getElementById('housekeepingReportSection');
 
+/**
+ * Shows the selected tab and hides the other.
+ * Also triggers data loading for the active tab.
+ * @param {string} tabName - 'checklist' or 'housekeeping'
+ */
 function showTab(tabName) {
     if (tabName === 'checklist') {
         roomChecklistSection.classList.remove('hidden');
@@ -32,10 +37,17 @@ function showTab(tabName) {
     }
 }
 
+// Event listeners for tab buttons
 tabChecklistBtn.addEventListener('click', () => showTab('checklist'));
 tabHousekeepingBtn.addEventListener('click', () => showTab('housekeeping'));
 
 // --- Utility function for displaying messages (replaces alert) ---
+/**
+ * Displays a message in a specified HTML element.
+ * @param {string} elementId - The ID of the HTML element to display the message in.
+ * @param {string} msg - The message to display.
+ * @param {boolean} [isError=false] - True if the message is an error, false otherwise.
+ */
 function displayMessage(elementId, msg, isError = false) {
     const element = document.getElementById(elementId);
     element.textContent = msg;
@@ -78,7 +90,9 @@ async function login() {
 
 // --- Room Checklist Functionality ---
 
-// Function to export table data to Excel
+/**
+ * Exports the data from the checklist table to an Excel file.
+ */
 function exportToExcel() {
     const table = document.getElementById("checklistTable");
     const ws = XLSX.utils.table_to_sheet(table);
@@ -87,6 +101,7 @@ function exportToExcel() {
     XLSX.writeFile(wb, "Hotel_Room_Checklist.xlsx");
 }
 
+// Event listener for checklist form submission
 document.getElementById('checklistForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
@@ -132,6 +147,9 @@ document.getElementById('checklistForm').addEventListener('submit', async functi
     }
 });
 
+/**
+ * Fetches all checklists from the backend and updates the `allChecklists` array.
+ */
 async function loadChecklists() {
     try {
         const res = await fetch(`${backendURL}/checklists`);
@@ -146,22 +164,25 @@ async function loadChecklists() {
     }
 }
 
+/**
+ * Renders the checklist table with filtered and paginated data.
+ */
 function renderChecklistTable() {
     const tbody = document.getElementById('checklistBody');
     const search = document.getElementById('searchInput').value.toLowerCase();
 
-    // Filter data
+    // Filter data based on search input
     const filtered = allChecklists.filter(entry =>
         entry.room.toLowerCase().includes(search) ||
         entry.date.toLowerCase().includes(search) ||
         JSON.stringify(entry.items).toLowerCase().includes(search) // Search in items too
     );
 
-    // Pagination
+    // Apply pagination
     const start = (currentPage - 1) * rowsPerPage;
     const paginated = filtered.slice(start, start + rowsPerPage);
 
-    tbody.innerHTML = '';
+    tbody.innerHTML = ''; // Clear existing rows
     if (paginated.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No checklists found.</td></tr>';
     } else {
@@ -170,7 +191,7 @@ function renderChecklistTable() {
             tr.innerHTML = `
                 <td class="border px-4 py-2">${entry.room}</td>
                 <td class="border px-4 py-2">${entry.date}</td>
-                <td class="border px-4 py-2">${Object.entries(entry.items).map(([k,v]) => `${k}: ${v}`).join(', ')}</td>
+                <td class="border px-4 py-2">${Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')}</td>
                 <td class="border px-4 py-2">
                     <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editChecklist(${JSON.stringify(entry)})'>Edit</button>
                     <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteChecklist("${entry._id}")'>Delete</button>
@@ -180,19 +201,20 @@ function renderChecklistTable() {
         });
     }
 
-
-    // Update pagination
+    // Update pagination info and button states
     const totalPages = Math.ceil(filtered.length / rowsPerPage);
     document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages || 1}`;
     document.getElementById('prevBtn').disabled = currentPage === 1;
     document.getElementById('nextBtn').disabled = currentPage >= totalPages;
 }
 
+/**
+ * Populates the edit form for a selected checklist entry.
+ * @param {object} entry - The checklist entry object to edit.
+ */
 function editChecklist(entry) {
     const tbody = document.getElementById('checklistBody');
-    // Find the row of the item being edited to replace it, or add a new editing row
     const existingRow = Array.from(tbody.children).find(row => {
-        // Find by ID if available, otherwise by content (less reliable)
         return row.querySelector('button[onclick*="deleteChecklist"]').onclick.toString().includes(`"${entry._id}"`);
     });
 
@@ -225,11 +247,14 @@ function editChecklist(entry) {
     if (existingRow) {
         existingRow.outerHTML = editRowHtml;
     } else {
-        // Fallback: prepend if row not found (shouldn't happen if edit is clicked on existing row)
         tbody.insertAdjacentHTML('afterbegin', editRowHtml);
     }
 }
 
+/**
+ * Saves the edited checklist entry to the backend.
+ * @param {string} id - The ID of the checklist entry to save.
+ */
 async function saveChecklist(id) {
     const room = document.getElementById(`editRoom-${id}`).value;
     const date = document.getElementById(`editDate-${id}`).value;
@@ -257,6 +282,10 @@ async function saveChecklist(id) {
     }
 }
 
+/**
+ * Deletes a checklist entry from the backend.
+ * @param {string} id - The ID of the checklist entry to delete.
+ */
 async function deleteChecklist(id) {
     if (!window.confirm("Are you sure you want to delete this checklist?")) return; // Replace with custom modal
 
@@ -274,6 +303,7 @@ async function deleteChecklist(id) {
     }
 }
 
+// Event listeners for checklist search and pagination
 document.getElementById('searchInput').addEventListener('input', () => {
     currentPage = 1;
     renderChecklistTable();
@@ -300,6 +330,7 @@ document.getElementById('nextBtn').addEventListener('click', () => {
 
 // --- Housekeeping Report Functionality ---
 
+// Event listener for status report form submission
 document.getElementById('statusReportForm').addEventListener('submit', async function(e) {
     e.preventDefault();
 
@@ -322,6 +353,9 @@ document.getElementById('statusReportForm').addEventListener('submit', async fun
     }
 });
 
+/**
+ * Fetches all status reports from the backend and updates the `allStatusReports` array.
+ */
 async function loadStatusReports() {
     try {
         const res = await fetch(`${backendURL}/status-reports`);
@@ -337,6 +371,9 @@ async function loadStatusReports() {
     }
 }
 
+/**
+ * Renders the status report table with filtered data.
+ */
 function renderStatusReportTable() {
     const tbody = document.getElementById('statusReportBody');
     tbody.innerHTML = '';
@@ -361,7 +398,9 @@ function renderStatusReportTable() {
     }
 }
 
-// Function to filter status reports by date
+/**
+ * Filters the `allStatusReports` by the selected date and updates `filteredStatusReports`.
+ */
 function filterStatusReportsByDate() {
     const filterDateInput = document.getElementById('filterDate').value;
     if (filterDateInput) {
@@ -380,14 +419,18 @@ function filterStatusReportsByDate() {
     renderStatusReportTable();
 }
 
-// Function to clear the date filter
+/**
+ * Clears the date filter and resets `filteredStatusReports` to all reports.
+ */
 function clearStatusDateFilter() {
     document.getElementById('filterDate').value = ''; // Clear the input field
     filteredStatusReports = [...allStatusReports]; // Reset to all reports
     renderStatusReportTable();
 }
 
-// Function to export Housekeeping Reports to Excel (specific columns)
+/**
+ * Exports the current `filteredStatusReports` (specific columns) to an Excel file.
+ */
 function exportStatusReportsToExcel() {
     // Prepare data with only the desired columns
     const dataToExport = filteredStatusReports.map(report => ({
@@ -403,7 +446,46 @@ function exportStatusReportsToExcel() {
     XLSX.writeFile(wb, "Hotel_Housekeeping_Reports.xlsx");
 }
 
+/**
+ * Prints the current `filteredStatusReports` (specific columns) in a new window.
+ */
+function printStatusReports() {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Housekeeping Report</title>');
+    // Add basic styling for print
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: sans-serif; margin: 20px; }');
+    printWindow.document.write('h1 { text-align: center; margin-bottom: 20px; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }');
+    printWindow.document.write('th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }');
+    printWindow.document.write('th { background-color: #f2f2f2; }');
+    printWindow.document.write('</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write('<h1>Housekeeping Room Status Report</h1>');
+    printWindow.document.write('<table>');
+    printWindow.document.write('<thead><tr><th>Room</th><th>Category</th><th>Status</th><th>Remarks</th><th>Date & Time</th></tr></thead>');
+    printWindow.document.write('<tbody>');
 
+    filteredStatusReports.forEach(report => {
+        printWindow.document.write('<tr>');
+        printWindow.document.write(`<td>${report.room}</td>`);
+        printWindow.document.write(`<td>${report.category}</td>`);
+        printWindow.document.write(`<td>${report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>`);
+        printWindow.document.write(`<td>${report.remarks}</td>`);
+        printWindow.document.write(`<td>${new Date(report.dateTime).toLocaleString()}</td>`);
+        printWindow.document.write('</tr>');
+    });
+
+    printWindow.document.write('</tbody></table>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+}
+
+/**
+ * Populates the edit form for a selected status report entry.
+ * @param {string} id - The ID of the status report entry to edit.
+ */
 function editStatusReport(id) {
     const reportToEdit = allStatusReports.find(report => report._id === id);
     if (!reportToEdit) {
@@ -452,6 +534,10 @@ function editStatusReport(id) {
     }
 }
 
+/**
+ * Saves the edited status report entry to the backend.
+ * @param {string} id - The ID of the status report entry to save.
+ */
 async function saveStatusReport(id) {
     const room = document.getElementById(`editReportRoom-${id}`).value;
     const category = document.getElementById(`editReportCategory-${id}`).value;
@@ -476,6 +562,10 @@ async function saveStatusReport(id) {
     }
 }
 
+/**
+ * Deletes a status report entry from the backend.
+ * @param {string} id - The ID of the status report entry to delete.
+ */
 async function deleteStatusReport(id) {
     if (!window.confirm("Are you sure you want to delete this status report?")) return; // Replace with custom modal
 
@@ -493,7 +583,7 @@ async function deleteStatusReport(id) {
 }
 
 // --- Initial Load ---
+// Ensures that the main application content is hidden until login is successful.
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('mainApp').style.display = 'none';
-    // No initial tab display here, as login handles it.
 });
