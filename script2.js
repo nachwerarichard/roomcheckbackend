@@ -4,6 +4,7 @@ let allChecklists = [];
 let currentPage = 1;
 const rowsPerPage = 5;
 let allStatusReports = [];
+let filteredStatusReports = []; // New array to hold filtered status reports
 
 // --- Tab Management ---
 const tabChecklistBtn = document.getElementById('tabChecklist');
@@ -328,6 +329,7 @@ async function loadStatusReports() {
             throw new Error(`HTTP error! status: ${res.status}`);
         }
         allStatusReports = await res.json();
+        filteredStatusReports = [...allStatusReports]; // Initialize filtered data with all data
         renderStatusReportTable();
     } catch (err) {
         console.error('Error loading status reports:', err);
@@ -338,10 +340,10 @@ async function loadStatusReports() {
 function renderStatusReportTable() {
     const tbody = document.getElementById('statusReportBody');
     tbody.innerHTML = '';
-    if (allStatusReports.length === 0) {
+    if (filteredStatusReports.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No housekeeping reports found.</td></tr>';
     } else {
-        allStatusReports.forEach(report => {
+        filteredStatusReports.forEach(report => {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td class="border px-4 py-2">${report.room}</td>
@@ -358,6 +360,33 @@ function renderStatusReportTable() {
         });
     }
 }
+
+// Function to filter status reports by date
+function filterStatusReportsByDate() {
+    const filterDateInput = document.getElementById('filterDate').value;
+    if (filterDateInput) {
+        const selectedDate = new Date(filterDateInput);
+        // Normalize selectedDate to start of day for accurate comparison
+        selectedDate.setHours(0, 0, 0, 0);
+
+        filteredStatusReports = allStatusReports.filter(report => {
+            const reportDate = new Date(report.dateTime);
+            reportDate.setHours(0, 0, 0, 0); // Normalize report date to start of day
+            return reportDate.getTime() === selectedDate.getTime();
+        });
+    } else {
+        filteredStatusReports = [...allStatusReports]; // If no date selected, show all
+    }
+    renderStatusReportTable();
+}
+
+// Function to clear the date filter
+function clearStatusDateFilter() {
+    document.getElementById('filterDate').value = ''; // Clear the input field
+    filteredStatusReports = [...allStatusReports]; // Reset to all reports
+    renderStatusReportTable();
+}
+
 
 function editStatusReport(id) {
     const reportToEdit = allStatusReports.find(report => report._id === id);
