@@ -111,7 +111,7 @@ function logout() {
     // Hide the main application dashboard
     document.getElementById('mainApp').classList.add('hidden');
     // Show the login section
-    document.getElementById('loginSection').classList.remove('hidden');
+    document.getElementById('loginSection').style.display = 'block';
     // Optional: Clear any stored data, like user session or local storage
     localStorage.clear();
     // Optional: Reset the login form
