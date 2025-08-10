@@ -787,7 +787,7 @@ function renderInventoryTable() {
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
                 <td class="border px-4 py-2">${item.quantity}</td>
-                <td class="border px-4 py-2">${item.}</td> 
+                <td class="border px-4 py-2">${item.lowStockLevel}</td>
                 <td class="border px-4 py-2">
                     <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
                     <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
