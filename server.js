@@ -19,18 +19,14 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 // Middleware
-// Middleware
 app.use(express.json());
 const corsOptions = {
-  origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
-  optionsSuccessStatus: 200 // For legacy browsers
+  origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
+  optionsSuccessStatus: 200 // For legacy browsers
 };
-app.use(cors(corsOptions)); // This line is correct and sufficient for all CORS needs
+app.use(cors(corsOptions));
+// --- Mongoose Schemas and Models ---
 
-// --- Mongoose Schemas and Models ---
-// ... the rest of your code is fine
-// --- Mongoose Schemas and Models ---
-// ... the rest of your code is fine
 // Checklist Schema and Model (from your original code)
 const checklistSchema = new mongoose.Schema({
   room: { type: String, required: true },
