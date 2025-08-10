@@ -717,11 +717,9 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
     const item = document.getElementById('inventoryItem').value;
     const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
     const action = document.getElementById('inventoryAction').value;
-    // 🆕 NEW: Get the low stock level from the form
-    const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
 
-    if (!item || isNaN(quantity) || quantity <= 0 || isNaN(lowStockLevel) || lowStockLevel < 0) {
-        displayMessage('inventoryMessage', 'Please enter a valid item name, quantity, and low stock level.', true);
+    if (!item || isNaN(quantity) || quantity <= 0) {
+        displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
         return;
     }
 
@@ -729,8 +727,7 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
         const res = await fetch(`${backendURL}/inventory`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // 🆕 NEW: Include the lowStockLevel in the request body
-            body: JSON.stringify({ item, quantity, action, lowStockLevel })
+            body: JSON.stringify({ item, quantity, action })
         });
         const result = await res.json();
         let msg = result.message || 'Inventory updated successfully.';
@@ -776,17 +773,16 @@ function renderInventoryTable() {
 
     tbody.innerHTML = '';
     if (filteredInventory.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
     } else {
         filteredInventory.forEach(item => {
             const tr = document.createElement('tr');
-            // 🆕 UPDATED: Use the item's specific lowStockLevel for the alert class
-            const lowStockClass = item.quantity <= item.lowStockLevel ? 'bg-red-100' : '';
+            const lowStockClass = item.quantity <= 10 ? 'bg-red-100' : '';
             tr.className = lowStockClass;
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
                 <td class="border px-4 py-2">${item.quantity}</td>
-                <td class="border px-4 py-2">${item.lowStockLevel}</td> <td class="border px-4 py-2">
+                <td class="border px-4 py-2">
                     <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
                     <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
                 </td>
@@ -815,7 +811,6 @@ function editInventoryItem(id) {
         <tr class="bg-blue-50">
             <td class="border px-4 py-2"><input type="text" id="editItem-${id}" value="${itemToEdit.item}" class="w-full px-2 py-1 border rounded-md" /></td>
             <td class="border px-4 py-2"><input type="number" id="editQuantity-${id}" value="${itemToEdit.quantity}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
-            <td class="border px-4 py-2"><input type="number" id="editLowStockLevel-${id}" value="${itemToEdit.lowStockLevel}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
             <td class="border px-4 py-2">
                 <button class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition duration-300 ease-in-out mr-2" onclick='saveInventoryItem("${id}")'>Save</button>
                 <button class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out" onclick='loadInventory()'>Cancel</button>
@@ -838,11 +833,9 @@ function editInventoryItem(id) {
 async function saveInventoryItem(id) {
     const item = document.getElementById(`editItem-${id}`).value;
     const quantity = parseInt(document.getElementById(`editQuantity-${id}`).value, 10);
-    // 🆕 NEW: Get the edited low stock level
-    const lowStockLevel = parseInt(document.getElementById(`editLowStockLevel-${id}`).value, 10);
 
-    if (!item || isNaN(quantity) || isNaN(lowStockLevel) || lowStockLevel < 0) {
-        displayMessage('inventoryMessage', 'Please enter a valid item, quantity, and low stock level.', true);
+    if (!item || isNaN(quantity)) {
+        displayMessage('inventoryMessage', 'Please enter a valid item and quantity.', true);
         return;
     }
     
@@ -850,8 +843,7 @@ async function saveInventoryItem(id) {
         const res = await fetch(`${backendURL}/inventory/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            // 🆕 NEW: Include the lowStockLevel in the PUT request body
-            body: JSON.stringify({ item, quantity, lowStockLevel })
+            body: JSON.stringify({ item, quantity })
         });
         const result = await res.json();
         displayMessage('inventoryMessage', result.message || 'Inventory item updated successfully!');
@@ -887,11 +879,9 @@ async function deleteInventoryItem(id) {
  * Exports the inventory table to an Excel file.
  */
 function exportInventoryToExcel() {
-    // 🆕 UPDATED: Include Low Stock Level in the exported data
     const dataToExport = allInventory.map(item => ({
         'Item Name': item.item,
-        'Stock Level': item.quantity,
-        'Low Stock Level': item.lowStockLevel
+        'Stock Level': item.quantity
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
@@ -903,181 +893,6 @@ function exportInventoryToExcel() {
 // Event listener for inventory search
 document.getElementById('inventorySearch').addEventListener('input', renderInventoryTable);
 
-// --- Initial Load and State ---
-document.addEventListener('DOMContentLoaded', () => {
-    // Other initializations...
-    
-    // 🆕 NEW: Generate checklist items when the DOM loads
-    generateChecklistItems();
-});
-
-// 🆕 NEW: Define your checklist items here
-const CHECKLIST_ITEMS = [
-    "towel",
-    "shampoo",
-    "soap",
-    "bed_sheets",
-    "water_bottles",
-    "toilet_paper"
-];
-
-// 🆕 NEW: Function to generate the checklist items dynamically
-function generateChecklistItems() {
-    const checklistItemsContainer = document.getElementById('checklist-items');
-    checklistItemsContainer.innerHTML = ''; // Clear existing content
-
-    CHECKLIST_ITEMS.forEach(item => {
-        const itemLabel = item.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-        const colDiv = document.createElement('div');
-        colDiv.className = 'col-md-4 mb-3';
-        colDiv.innerHTML = `
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="${item}" id="${item}-yes" value="yes" required>
-                <label class="form-check-label" for="${item}-yes">${itemLabel} - Yes</label>
-            </div>
-            <div class="form-check form-check-inline">
-                <input class="form-check-input" type="radio" name="${item}" id="${item}-no" value="no" required>
-                <label class="form-check-label" for="${item}-no">${itemLabel} - No</label>
-            </div>
-        `;
-        checklistItemsContainer.appendChild(colDiv);
-    });
-}
-
-// --- Housekeeping Checklist Functionality ---
-document.getElementById('checklist-form').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const room = document.getElementById('checklist-room').value;
-    const date = document.getElementById('checklist-date').value;
-    const checklistItems = {};
-
-    // Collect the checklist item statuses
-    CHECKLIST_ITEMS.forEach(item => {
-        const status = document.querySelector(`input[name="${item}"]:checked`);
-        if (status) {
-            checklistItems[item] = status.value;
-        }
-    });
-
-    try {
-        const response = await fetch('/submit-checklist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ room, date, items: checklistItems })
-        });
-        
-        const result = await response.json();
-        
-        if (response.ok) {
-            alert(result.message);
-            // Clear the form and refresh the list
-            e.target.reset();
-            loadChecklists();
-        } else {
-            throw new Error(result.message || 'Failed to submit checklist');
-        }
-
-    } catch (error) {
-        console.error('Error submitting checklist:', error);
-        alert(error.message);
-    }
-});
-
-// Function to load and display checklists (Placeholder)
-async function loadChecklists() {
-    const checklistList = document.getElementById('checklist-list');
-    checklistList.innerHTML = '<tr><td colspan="4">Loading checklists...</td></tr>';
-    
-    try {
-        const response = await fetch('/checklists');
-        const checklists = await response.json();
-        
-        checklistList.innerHTML = '';
-        if (checklists.length === 0) {
-            checklistList.innerHTML = '<tr><td colspan="4">No checklists found.</td></tr>';
-            return;
-        }
-
-        checklists.forEach(checklist => {
-            const row = document.createElement('tr');
-            const hasMissingItems = Object.values(checklist.items).includes('no');
-            const statusText = hasMissingItems ? 'Missing Items' : 'Complete';
-            const statusClass = hasMissingItems ? 'text-danger' : 'text-success';
-
-            row.innerHTML = `
-                <td>${checklist.room}</td>
-                <td>${checklist.date}</td>
-                <td class="${statusClass}">${statusText}</td>
-                <td>
-                    <button class="btn btn-sm btn-info text-white" onclick="viewChecklist('${checklist._id}')">View</button>
-                    <button class="btn btn-sm btn-danger" onclick="deleteChecklist('${checklist._id}')">Delete</button>
-                </td>
-            `;
-            checklistList.appendChild(row);
-        });
-
-    } catch (error) {
-        console.error('Error fetching checklists:', error);
-        checklistList.innerHTML = '<tr><td colspan="4">Failed to load checklists.</td></tr>';
-    }
-}
-
-// Function to view checklist details (Placeholder)
-async function viewChecklist(id) {
-    try {
-        const response = await fetch(`/checklists/${id}`);
-        const checklist = await response.json();
-
-        const checklistDetailsBody = document.getElementById('checklist-details-body');
-        let detailsHtml = `<h6>Room: ${checklist.room}</h6><h6>Date: ${checklist.date}</h6><hr>`;
-        detailsHtml += '<ul>';
-        for (const [item, status] of Object.entries(checklist.items)) {
-            const itemLabel = item.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            const statusText = status === 'yes' ? 'Present' : 'Missing';
-            const statusClass = status === 'yes' ? 'text-success' : 'text-danger';
-            detailsHtml += `<li>${itemLabel}: <span class="${statusClass}">${statusText}</span></li>`;
-        }
-        detailsHtml += '</ul>';
-        checklistDetailsBody.innerHTML = detailsHtml;
-
-        const checklistDetailsModal = new bootstrap.Modal(document.getElementById('checklistDetailsModal'));
-        checklistDetailsModal.show();
-    } catch (error) {
-        console.error('Error viewing checklist:', error);
-        alert('Failed to load checklist details.');
-    }
-}
-
-// Function to delete a checklist (Placeholder)
-async function deleteChecklist(id) {
-    if (!confirm('Are you sure you want to delete this checklist?')) {
-        return;
-    }
-    
-    try {
-        const response = await fetch(`/checklists/${id}`, { method: 'DELETE' });
-        const result = await response.json();
-        if (response.ok) {
-            alert(result.message);
-            loadChecklists();
-        } else {
-            throw new Error(result.message || 'Failed to delete checklist.');
-        }
-    } catch (error) {
-        console.error('Error deleting checklist:', error);
-        alert(error.message);
-    }
-}
-
-
-
-// ... (other status report functions)
-
-
-// --- Inventory Management Functionality (from previous response) ---
-// All inventory-related functions will be placed here
-// ... (your previous inventory functions)
 
 // --- Initial Load ---
 // Ensures that the main application content is hidden until login is successful.
