@@ -728,7 +728,7 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
         const res = await fetch(`${backendURL}/inventory`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity, action })
+            body: JSON.stringify({ item, quantity, action,lowstocklevel })
         });
         const result = await res.json();
         let msg = result.message || 'Inventory updated successfully.';
@@ -777,9 +777,12 @@ function renderInventoryTable() {
         tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
     } else {
         filteredInventory.forEach(item => {
-            const tr = document.createElement('tr');
-            // Determine the low stock class.
-            const lowStockClass = item.lowStockLevel;
+            // ...
+const tr = document.createElement('tr');
+if (item.quantity <= item.lowStockLevel) {
+    tr.classList.add('low-stock-warning');
+}
+// ...
             
             // Correctly apply the class to the row.
             // This ensures other classes on the row are not overwritten.
@@ -851,7 +854,7 @@ async function saveInventoryItem(id) {
         const res = await fetch(`${backendURL}/inventory/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity })
+            body: JSON.stringify({ item, quantity,lowStockLevel })
         });
         const result = await res.json();
         displayMessage('inventoryMessage', result.message || 'Inventory item updated successfully!');
