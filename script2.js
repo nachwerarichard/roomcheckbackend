@@ -1,5 +1,5 @@
 // script.js
-const backendURL = 'https://harmonious-crumble-2ca9ba.netlify.app';
+const backendURL = 'https://roomcheckbackend-grf6.onrender.com';
 
 // --- DOM Element References ---
 const loginSection = document.getElementById('loginSection');
