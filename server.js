@@ -26,7 +26,8 @@ const corsOptions = {
 };
 app.use(cors(corsOptions));
 // --- Mongoose Schemas and Models ---
-
+// Add this line after your cors middleware
+app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
 // Checklist Schema and Model (from your original code)
 const checklistSchema = new mongoose.Schema({
   room: { type: String, required: true },
