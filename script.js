@@ -777,11 +777,17 @@ function renderInventoryTable() {
     } else {
         filteredInventory.forEach(item => {
             const tr = document.createElement('tr');
+            // Determine the low stock class.
             const lowStockClass = item.quantity <= 10 ? 'bg-red-100' : '';
-            tr.className = lowStockClass;
+            
+            // Correctly apply the class to the row.
+            // This ensures other classes on the row are not overwritten.
+            tr.className = `${lowStockClass}`; 
+            
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
                 <td class="border px-4 py-2">${item.quantity}</td>
+                <td class="border px-4 py-2">${item.}</td> 
                 <td class="border px-4 py-2">
                     <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
                     <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
@@ -791,7 +797,6 @@ function renderInventoryTable() {
         });
     }
 }
-
 /**
  * Populates the inventory form for editing an item.
  * @param {string} id - The ID of the inventory item to edit.
