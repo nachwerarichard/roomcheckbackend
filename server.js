@@ -52,7 +52,7 @@ const StatusReport = mongoose.model('StatusReport', statusReportSchema);
 const inventorySchema = new mongoose.Schema({
     item: { type: String, required: true, unique: true },
     quantity: { type: Number, required: true, min: 0, default: 0 },
-    lowStockLevel: { type: Number, required: true, min: 0, default: 10 } // Each item now has its own low stock level
+    lowStockLevel: { type: Number, required: true, min: 0, default: 0 } // Each item now has its own low stock level
 }, { timestamps: true });
 
 const Inventory = mongoose.model('Inventory', inventorySchema);
