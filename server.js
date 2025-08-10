@@ -48,7 +48,7 @@ const statusReportSchema = new mongoose.Schema({
 
 const StatusReport = mongoose.model('StatusReport', statusReportSchema);
 
-// NEW: Inventory Schema and Model
+// Inventory Schema and Model
 const inventorySchema = new mongoose.Schema({
   item: { type: String, required: true, unique: true },
   quantity: { type: Number, required: true, min: 0, default: 0 },
@@ -57,7 +57,7 @@ const inventorySchema = new mongoose.Schema({
 
 const Inventory = mongoose.model('Inventory', inventorySchema);
 
-// NEW: AuditLog Schema and Model
+// AuditLog Schema and Model
 const auditLogSchema = new mongoose.Schema({
   timestamp: { type: Date, required: true, default: Date.now },
   user: { type: String, required: true }, // The user who performed the action
@@ -238,6 +238,18 @@ app.get('/status-reports', async (req, res) => {
   }
 });
 
+// NEW: Add a GET endpoint for '/reports' that points to the same data
+// as '/status-reports' to fix the 404 error from the client.
+app.get('/reports', async (req, res) => {
+  try {
+    const reports = await StatusReport.find().sort({ dateTime: -1 });
+    res.status(200).json(reports);
+  } catch (err) {
+    console.error('❌ Error retrieving status reports:', err);
+    res.status(500).json({ message: 'Failed to retrieve status reports' });
+  }
+});
+
 app.put('/status-reports/:id', async (req, res) => {
   const { user } = req.body;
   const action = 'UPDATE_STATUS_REPORT';
@@ -307,6 +319,13 @@ app.get('/inventory', async (req, res) => {
 app.put('/inventory/:id', async (req, res) => {
   const { quantity, user } = req.body;
   const action = 'UPDATE_INVENTORY_ITEM';
+
+  // NEW: Add a check for a valid ID
+  if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+    await createAuditLog(user, action, 'FAILURE', { message: 'Invalid or missing ID', itemId: req.params.id });
+    return res.status(400).json({ message: 'Invalid or missing inventory item ID' });
+  }
+
   try {
     if (quantity === undefined) {
       await createAuditLog(user, action, 'FAILURE', { message: 'Missing quantity field', itemId: req.params.id });
@@ -351,6 +370,13 @@ app.put('/inventory/:id', async (req, res) => {
 app.delete('/inventory/:id', async (req, res) => {
   const { user } = req.body;
   const action = 'DELETE_INVENTORY_ITEM';
+  
+  // NEW: Add a check for a valid ID
+  if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
+    await createAuditLog(user, action, 'FAILURE', { message: 'Invalid or missing ID', itemId: req.params.id });
+    return res.status(400).json({ message: 'Invalid or missing inventory item ID' });
+  }
+
   try {
     const result = await Inventory.findByIdAndDelete(req.params.id);
     if (!result) {
@@ -366,9 +392,7 @@ app.delete('/inventory/:id', async (req, res) => {
   }
 });
 
-// NEW: API Endpoint for Audit Logs
-// The frontend can now POST to this endpoint to create a new log entry.
-// This route will call the reusable createAuditLog function.
+// API Endpoint for Audit Logs
 app.post('/audit-logs', async (req, res) => {
   const { user, action, details, status } = req.body;
   
@@ -401,4 +425,3 @@ app.get('/audit-logs', async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
-
