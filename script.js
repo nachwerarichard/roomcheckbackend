@@ -839,8 +839,8 @@ function editInventoryItem(id) {
  */
 async function saveInventoryItem(id) {
     const item = document.getElementById(`editItem-${id}`).value;
-    const quantity = parseInt(document.getElementById(`editQuantity-${id}`).value, 10);
-    const lowStockLevel = parseInt(document.getElementById(`editLowstocklevel-${id}`).value, 10);
+    const quantity = parseInt(document.getElementById(`editQuantity-${id}`).value);
+    const lowStockLevel = parseInt(document.getElementById(`editLowstocklevel-${id}`).value);
 
     if (!item || isNaN(quantity)) {
         displayMessage('inventoryMessage', 'Please enter a valid item and quantity.', true);
