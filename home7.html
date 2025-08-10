@@ -89,10 +89,12 @@
     <div id="mainApp" class="hidden p-4 sm:p-6 max-w-6xl mx-auto">
         <h1 class="text-4xl font-extrabold mb-8 text-center text-gray-900">Hotel Management Dashboard</h1>
 
-        <div class="flex flex-wrap justify-center mb-6 bg-white p-2 rounded-lg shadow-md">
+        <div class="flex flex-wrap justify-center items-center mb-6 bg-white p-2 rounded-lg shadow-md">
             <button id="tabChecklist" class="flex-1 py-3 px-6 text-lg font-semibold rounded-lg transition duration-300 ease-in-out text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 m-1 sm:m-2">Room Checklist</button>
             <button id="tabHousekeeping" class="flex-1 py-3 px-6 text-lg font-semibold rounded-lg transition duration-300 ease-in-out text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 m-1 sm:m-2">Housekeeping Report</button>
             <button id="tabInventory" class="flex-1 py-3 px-6 text-lg font-semibold rounded-lg transition duration-300 ease-in-out text-gray-700 bg-gray-200 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 m-1 sm:m-2">Inventory Management</button>
+            
+            <button id="logoutButton" onclick="logout()" class="flex-1 py-3 px-6 text-lg font-semibold rounded-lg transition duration-300 ease-in-out text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 m-1 sm:m-2">Logout</button>
         </div>
 
         <div id="roomChecklistSection" class="tab-content">
@@ -272,7 +274,7 @@
                     </div>
                     <div>
                         <label for="lowStockLevel" class="block font-medium text-gray-700">Low Stock Notification Level:</label>
-                        <input type="number" id="lowStockLevel" name="lowStockLevel"  class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 10" min="0" />
+                        <input type="number" id="lowStockLevel" name="lowStockLevel" class="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 10" min="0" />
                     </div>
                     <div>
                         <label for="inventoryAction" class="block font-medium text-gray-700">Action:</label>
