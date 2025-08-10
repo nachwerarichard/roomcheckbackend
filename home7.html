@@ -218,7 +218,7 @@
         <!-- Audit Log Tab Content -->
         <section id="auditLogSection" class="hidden">
             <h2 class="text-xl font-semibold text-gray-700 mb-4">Audit Log</h2>
-            <!-- NEW: Search Input for Audit Log -->
+            <!-- Search Input for Audit Log -->
             <div class="mb-4">
                 <label for="searchInput" class="sr-only">Search Audit Log</label>
                 <input type="text" id="searchInput" placeholder="Search by user, action, or details..." class="w-full p-2 border border-gray-300 rounded-md shadow-sm">
@@ -240,6 +240,12 @@
                         <!-- Audit log rows will be dynamically inserted here -->
                     </tbody>
                 </table>
+            </div>
+            <!-- Pagination Controls -->
+            <div class="flex justify-between items-center mt-4">
+                <button id="prevBtn" class="py-2 px-4 bg-gray-300 rounded-md hover:bg-gray-400 disabled:opacity-50" disabled>Previous</button>
+                <span id="pageInfo" class="text-sm text-gray-600">Page <span id="currentPageSpan">1</span> of <span id="totalPagesSpan">1</span></span>
+                <button id="nextBtn" class="py-2 px-4 bg-gray-300 rounded-md hover:bg-gray-400 disabled:opacity-50" disabled>Next</button>
             </div>
         </section>
 
