@@ -24,8 +24,8 @@ const corsOptions = {
   origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
   optionsSuccessStatus: 200 // For legacy browsers
 };
-app.use(cors(corsOptions));
-// --- Mongoose Schemas and Models ---
+// Enable pre-flight for all routes with a named wildcard
+app.options('/*', cors(corsOptions));// --- Mongoose Schemas and Models ---
 // Add this line after your cors middleware
 app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
 // Checklist Schema and Model (from your original code)
