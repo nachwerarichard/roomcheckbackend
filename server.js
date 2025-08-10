@@ -25,27 +25,38 @@ const corsOptions = {
   optionsSuccessStatus: 200 // For legacy browsers
 };
 app.use(cors(corsOptions));
+
 // --- Mongoose Schemas and Models ---
 
-// Checklist Schema and Model (from your original code)
+// Checklist Schema and Model
 const checklistSchema = new mongoose.Schema({
   room: { type: String, required: true },
-  date: { type: String, required: true }, // Storing as string as per your HTML input type="date"
-  items: { type: Object, required: true }, // Object containing item: 'yes'/'no' pairs
-}, { timestamps: true }); // Adds createdAt and updatedAt
+  date: { type: String, required: true },
+  items: { type: Object, required: true },
+}, { timestamps: true });
 
 const Checklist = mongoose.model('Checklist', checklistSchema);
 
-// NEW: StatusReport Schema and Model
+// StatusReport Schema and Model
 const statusReportSchema = new mongoose.Schema({
   room: { type: String, required: true },
-  category: { type: String, required: true }, // e.g., delux1, delux2, standard
-  status: { type: String, required: true },   // e.g., arrival, occupied, departure, vacant_ready, vacant_not_ready, out_of_order, out_of_service
+  category: { type: String, required: true },
+  status: { type: String, required: true },
   remarks: { type: String, default: '' },
-  dateTime: { type: Date, required: true, default: Date.now }, // Date and time of the report
-}, { timestamps: true }); // Adds createdAt and updatedAt
+  dateTime: { type: Date, required: true, default: Date.now },
+}, { timestamps: true });
 
 const StatusReport = mongoose.model('StatusReport', statusReportSchema);
+
+// 🆕 NEW: Inventory Schema and Model with custom lowStockLevel
+const inventorySchema = new mongoose.Schema({
+    item: { type: String, required: true, unique: true },
+    quantity: { type: Number, required: true, min: 0, default: 0 },
+    lowStockLevel: { type: Number, required: true, min: 0, default: 10 } // Each item now has its own low stock level
+}, { timestamps: true });
+
+const Inventory = mongoose.model('Inventory', inventorySchema);
+
 
 // --- Admin Login ---
 app.post('/login', (req, res) => {
@@ -58,7 +69,7 @@ app.post('/login', (req, res) => {
   return res.status(401).json({ message: 'Invalid credentials' });
 });
 
-// --- Email Transporter (for missing items) ---
+// --- Email Transporter ---
 const transporter = nodemailer.createTransport({
   service: 'gmail',
   auth: {
@@ -67,7 +78,39 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// --- API Endpoints for Room Checklists ---
+
+// 🆕 UPDATED: Low Stock Email Notification Function
+/**
+ * Sends a low stock email notification if an item's quantity is below its specific lowStockLevel.
+ * @param {string} item - The name of the low-stock item.
+ * @param {number} quantity - The current quantity of the item.
+ * @param {number} lowStockLevel - The custom low stock threshold for this item.
+ */
+async function sendLowStockEmail(item, quantity, lowStockLevel) {
+    if (quantity <= lowStockLevel) { // Use the item-specific threshold
+        const html = `<p><strong>Urgent Low Stock Alert!</strong></p>
+                      <p>The inventory for <strong>${item}</strong> is critically low. There are only <strong>${quantity}</strong> units remaining. The low stock level for this item is ${lowStockLevel}.</p>
+                      <p>Please reorder this item as soon as possible.</p>`;
+
+        try {
+            await transporter.sendMail({
+                from: process.env.EMAIL_USER,
+                to: process.env.EMAIL_USER, // Sends email to self (admin)
+                subject: `LOW STOCK ALERT: ${item}`,
+                html,
+            });
+            console.log(`📧 Low stock email sent for ${item}.`);
+            return true;
+        } catch (emailErr) {
+            console.error('❌ Low stock email sending failed:', emailErr);
+            return false;
+        }
+    }
+    return false;
+}
+
+
+// --- API Endpoints for Room Checklists (existing) ---
 
 // Submit checklist
 app.post('/submit-checklist', async (req, res) => {
@@ -93,7 +136,7 @@ app.post('/submit-checklist', async (req, res) => {
       try {
         await transporter.sendMail({
           from: process.env.EMAIL_USER,
-          to: process.env.EMAIL_USER, // Sends email to self (admin)
+          to: process.env.EMAIL_USER,
           subject: `Urgent: Missing Items in Room ${room} on ${date}`,
           html,
         });
@@ -101,7 +144,6 @@ app.post('/submit-checklist', async (req, res) => {
         emailSent = true;
       } catch (emailErr) {
         console.error('❌ Email sending failed:', emailErr);
-        // Do not return error, just log it, as checklist submission might still be successful
       }
     }
 
@@ -116,7 +158,7 @@ app.post('/submit-checklist', async (req, res) => {
 // Get all checklists
 app.get('/checklists', async (req, res) => {
   try {
-    const data = await Checklist.find().sort({ date: -1, createdAt: -1 }); // Sort by date, then creation time
+    const data = await Checklist.find().sort({ date: -1, createdAt: -1 });
     res.status(200).json(data);
   } catch (err) {
     console.error('❌ Error retrieving checklists:', err);
@@ -152,7 +194,7 @@ app.delete('/checklists/:id', async (req, res) => {
   }
 });
 
-// --- API Endpoints for Housekeeping Room Status Reports ---
+// --- API Endpoints for Housekeeping Room Status Reports (existing) ---
 
 // Submit a new status report
 app.post('/submit-status-report', async (req, res) => {
@@ -175,7 +217,6 @@ app.post('/submit-status-report', async (req, res) => {
 // Get all status reports
 app.get('/status-reports', async (req, res) => {
   try {
-    // Sort by dateTime in descending order to show latest reports first
     const reports = await StatusReport.find().sort({ dateTime: -1 });
     res.status(200).json(reports);
   } catch (err) {
@@ -211,6 +252,94 @@ app.delete('/status-reports/:id', async (req, res) => {
     res.status(500).json({ message: 'Delete failed for status report' });
   }
 });
+
+
+// --- 🆕 UPDATED: API Endpoints for Inventory Management ---
+
+// Add or Use Inventory (Create/Update logic combined)
+app.post('/inventory', async (req, res) => {
+    const { item, quantity, action, lowStockLevel } = req.body;
+    
+    if (!item || !quantity || !action) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
+
+    try {
+        let inventoryItem = await Inventory.findOne({ item: { $regex: new RegExp(`^${item}$`, 'i') } });
+        let lowStockEmailSent = false;
+        
+        if (inventoryItem) {
+            // Item exists, update quantity
+            if (action === 'add') {
+                inventoryItem.quantity += quantity;
+            } else if (action === 'use') {
+                if (inventoryItem.quantity < quantity) {
+                    return res.status(400).json({ message: `Cannot use ${quantity} units. Only ${inventoryItem.quantity} are in stock.` });
+                }
+                inventoryItem.quantity -= quantity;
+            }
+            await inventoryItem.save();
+            lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
+            return res.status(200).json({ message: 'Inventory updated successfully', lowStockEmailSent });
+        } else if (action === 'add') {
+            // Item does not exist, create a new one only if action is 'add'
+            // Use provided lowStockLevel or default to 10
+            inventoryItem = new Inventory({ item, quantity, lowStockLevel: lowStockLevel || 10 }); 
+            await inventoryItem.save();
+            lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
+            return res.status(201).json({ message: 'New inventory item added', lowStockEmailSent });
+        } else {
+            // Cannot 'use' an item that doesn't exist
+            return res.status(404).json({ message: 'Item not found in inventory' });
+        }
+
+    } catch (err) {
+        console.error('❌ Error updating inventory:', err);
+        res.status(500).json({ message: 'Server error while updating inventory' });
+    }
+});
+
+// Get all inventory items
+app.get('/inventory', async (req, res) => {
+    try {
+        const items = await Inventory.find().sort({ item: 1 });
+        res.status(200).json(items);
+    } catch (err) {
+        console.error('❌ Error retrieving inventory:', err);
+        res.status(500).json({ message: 'Failed to retrieve inventory' });
+    }
+});
+
+// Update an inventory item by ID (allows direct editing of quantity and name)
+app.put('/inventory/:id', async (req, res) => {
+    try {
+        const updated = await Inventory.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+        if (!updated) {
+            return res.status(404).json({ message: 'Inventory item not found' });
+        }
+        // Use the updated lowStockLevel for the email check
+        await sendLowStockEmail(updated.item, updated.quantity, updated.lowStockLevel); 
+        res.status(200).json({ message: 'Inventory item updated successfully', updated });
+    } catch (err) {
+        console.error('❌ Error updating inventory item:', err);
+        res.status(500).json({ message: 'Update failed for inventory item' });
+    }
+});
+
+// Delete an inventory item by ID
+app.delete('/inventory/:id', async (req, res) => {
+    try {
+        const deleted = await Inventory.findByIdAndDelete(req.params.id);
+        if (!deleted) {
+            return res.status(404).json({ message: 'Inventory item not found' });
+        }
+        res.status(200).json({ message: 'Inventory item deleted successfully' });
+    } catch (err) {
+        console.error('❌ Error deleting inventory item:', err);
+        res.status(500).json({ message: 'Delete failed for inventory item' });
+    }
+});
+
 
 // Start server
 app.listen(PORT, () => {
