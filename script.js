@@ -778,7 +778,7 @@ function renderInventoryTable() {
         filteredInventory.forEach(item => {
             const tr = document.createElement('tr');
             // Determine the low stock class.
-            const lowStockClass = item.quantity <= 10 ? 'bg-red-100' : '';
+            const lowStockClass = item.lowStockLevel;
             
             // Correctly apply the class to the row.
             // This ensures other classes on the row are not overwritten.
