@@ -1,524 +1,901 @@
-// Base URL for the backend API
-const API_BASE_URL = 'https://roomcheckbackend-grf6.onrender.com';
-
-// Global data arrays
+// script.js
+const backendURL = 'https://roomcheckbackend-grf6.onrender.com'; // Ensure this is correct
 let allChecklists = [];
-let allHousekeepingReports = [];
-let allInventoryItems = [];
-let allAuditLogs = [];
-let currentUser = null; // Store the logged-in user
-
-// Pagination state for each tab
+let currentPage = 1;
 const rowsPerPage = 5;
-const paginationState = {
-    checklists: { currentPage: 1, totalPages: 1 },
-    housekeeping: { currentPage: 1, totalPages: 1 },
-    inventory: { currentPage: 1, totalPages: 1 },
-    auditLog: { currentPage: 1, totalPages: 1 }
-};
+let allStatusReports = [];
+let filteredStatusReports = [];
+let allInventory = []; // New array to hold all inventory items
 
-// --- Custom Modal Functions (replaces alert and confirm) ---
-const modalContainer = document.getElementById('modalContainer');
-const modalTitle = document.getElementById('modalTitle');
-const modalMessage = document.getElementById('modalMessage');
-const modalButtons = document.getElementById('modalButtons');
+// --- Tab Management ---
+const tabChecklistBtn = document.getElementById('tabChecklist');
+const tabHousekeepingBtn = document.getElementById('tabHousekeeping');
+const tabInventoryBtn = document.getElementById('tabInventory'); // New tab button
+const roomChecklistSection = document.getElementById('roomChecklistSection');
+const housekeepingReportSection = document.getElementById('housekeepingReportSection');
+const inventorySection = document.getElementById('inventorySection'); // New section
 
-function showModal(title, message, buttons) {
-    modalTitle.textContent = title;
-    modalMessage.textContent = message;
-    modalButtons.innerHTML = '';
-    buttons.forEach(btnConfig => {
-        const button = document.createElement('button');
-        button.textContent = btnConfig.text;
-        button.className = `py-2 px-4 rounded-md font-semibold transition-colors ${btnConfig.class || 'bg-gray-300 hover:bg-gray-400'}`;
-        button.onclick = () => {
-            btnConfig.action();
-            hideModal();
-        };
-        modalButtons.appendChild(button);
-    });
-    modalContainer.classList.remove('hidden');
+/**
+ * Shows the selected tab and hides the others.
+ * Also triggers data loading for the active tab.
+ * @param {string} tabName - 'checklist', 'housekeeping', or 'inventory'
+ */
+function showTab(tabName) {
+    // Hide all sections first
+    roomChecklistSection.classList.add('hidden');
+    housekeepingReportSection.classList.add('hidden');
+    inventorySection.classList.add('hidden');
+
+    // Remove active class from all buttons
+    tabChecklistBtn.classList.remove('bg-blue-600', 'text-white');
+    tabHousekeepingBtn.classList.remove('bg-blue-600', 'text-white');
+    tabInventoryBtn.classList.remove('bg-blue-600', 'text-white');
+    tabChecklistBtn.classList.add('bg-gray-200', 'text-gray-700');
+    tabHousekeepingBtn.classList.add('bg-gray-200', 'text-gray-700');
+    tabInventoryBtn.classList.add('bg-gray-200', 'text-gray-700');
+
+    // Show the selected section and add active class to button
+    if (tabName === 'checklist') {
+        roomChecklistSection.classList.remove('hidden');
+        tabChecklistBtn.classList.add('bg-blue-600', 'text-white');
+        tabChecklistBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        loadChecklists(); // Reload data when tab is shown
+    } else if (tabName === 'housekeeping') {
+        housekeepingReportSection.classList.remove('hidden');
+        tabHousekeepingBtn.classList.add('bg-blue-600', 'text-white');
+        tabHousekeepingBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        loadStatusReports(); // Reload data when tab is shown
+    } else if (tabName === 'inventory') {
+        inventorySection.classList.remove('hidden');
+        tabInventoryBtn.classList.add('bg-blue-600', 'text-white');
+        tabInventoryBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        loadInventory(); // Load inventory data when tab is shown
+    }
 }
 
-function hideModal() {
-    modalContainer.classList.add('hidden');
+// Event listeners for tab buttons
+tabChecklistBtn.addEventListener('click', () => showTab('checklist'));
+tabHousekeepingBtn.addEventListener('click', () => showTab('housekeeping'));
+tabInventoryBtn.addEventListener('click', () => showTab('inventory')); // New event listener
+
+// --- Utility function for displaying messages (replaces alert) ---
+/**
+ * Displays a message in a specified HTML element.
+ * @param {string} elementId - The ID of the HTML element to display the message in.
+ * @param {string} msg - The message to display.
+ * @param {boolean} [isError=false] - True if the message is an error, false otherwise.
+ */
+function displayMessage(elementId, msg, isError = false) {
+    const element = document.getElementById(elementId);
+    element.textContent = msg;
+    element.classList.remove('text-green-600', 'text-red-600');
+    if (isError) {
+        element.classList.add('text-red-600');
+    } else {
+        element.classList.add('text-green-600');
+    }
+    setTimeout(() => {
+        element.textContent = '';
+    }, 5000); // Clear message after 5 seconds
 }
 
-// --- Data Fetching Functions (API Calls) ---
+// --- Login Function ---
+async function login() {
+    const user = document.getElementById('username').value;
+    const pass = document.getElementById('password').value;
+    const loginMsg = document.getElementById('loginMsg');
 
-// Generic fetch function with error handling
-async function fetchData(endpoint, options = {}) {
     try {
-        const response = await fetch(`${API_BASE_URL}/${endpoint}`, options);
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`HTTP error! status: ${response.status}, message: ${errorText}`);
+        const res = await fetch(`${backendURL}/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username: user, password: pass })
+        });
+
+        if (res.ok) {
+            document.getElementById('loginSection').style.display = 'none';
+            document.getElementById('mainApp').style.display = 'block';
+            showTab('checklist'); // Show the checklist tab by default after login
+        } else {
+            displayMessage('loginMsg', 'Invalid username or password.', true);
         }
-        return await response.json();
-    } catch (e) {
-        console.error(`Error fetching data from ${endpoint}:`, e);
-        showModal('Error', `Failed to connect to the server or process data. Please try again.`, [{ text: 'OK', action: () => {} }]);
-        return null;
+    } catch (err) {
+        console.error('Login error:', err);
+        displayMessage('loginMsg', 'Server error during login.', true);
     }
 }
 
-// Fetch all checklists
-async function fetchChecklists() {
-    const data = await fetchData('checklists');
-    if (data) {
-        allChecklists = data;
-        renderChecklistTable();
-    }
-}
+// --- Room Checklist Functionality ---
 
-// Add a new checklist
-async function addChecklist(data) {
-    const response = await fetchData('checklists', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, user: currentUser })
-    });
-    if (response) {
-        document.getElementById('checklistMessage').textContent = 'Checklist submitted successfully.';
-        fetchChecklists(); // Refresh the table
-    } else {
-        document.getElementById('checklistMessage').textContent = 'Failed to submit checklist.';
-    }
-}
-
-// Delete a checklist
-async function deleteChecklist(id) {
-    const response = await fetchData(`checklists/${id}`, {
-        method: 'DELETE'
-    });
-    if (response) {
-        fetchChecklists(); // Refresh the table
-    }
-}
-
-// Fetch all housekeeping reports
-async function fetchHousekeepingReports() {
-    const data = await fetchData('reports');
-    if (data) {
-        allHousekeepingReports = data;
-        renderHousekeepingTable();
-    }
-}
-
-// Add a new housekeeping report
-async function addHousekeepingReport(data) {
-    const response = await fetchData('reports', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, user: currentUser, timestamp: new Date().toISOString() })
-    });
-    if (response) {
-        document.getElementById('housekeepingMessage').textContent = 'Housekeeping report submitted successfully.';
-        fetchHousekeepingReports(); // Refresh the table
-    } else {
-        document.getElementById('housekeepingMessage').textContent = 'Failed to submit report.';
-    }
-}
-
-// Delete a housekeeping report
-async function deleteHousekeepingReport(id) {
-    const response = await fetchData(`reports/${id}`, {
-        method: 'DELETE'
-    });
-    if (response) {
-        fetchHousekeepingReports(); // Refresh the table
-    }
-}
-
-// Fetch all inventory items
-async function fetchInventoryItems() {
-    const data = await fetchData('inventory');
-    if (data) {
-        allInventoryItems = data;
-        renderInventoryTable();
-    }
-}
-
-// Add a new inventory item
-async function addInventoryItem(data) {
-    const response = await fetchData('inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...data, user: currentUser })
-    });
-    if (response) {
-        document.getElementById('inventoryMessage').textContent = `Item '${data.item}' added successfully.`;
-        fetchInventoryItems(); // Refresh the table
-    } else {
-        document.getElementById('inventoryMessage').textContent = 'Failed to add item.';
-    }
-}
-
-// Delete an inventory item
-async function deleteInventoryItem(id) {
-    const response = await fetchData(`inventory/${id}`, {
-        method: 'DELETE'
-    });
-    if (response) {
-        fetchInventoryItems(); // Refresh the table
-    }
-}
-
-// Fetch all audit logs
-async function fetchAuditLogs() {
-    const data = await fetchData('audit-logs');
-    if (data) {
-        // Sort logs by timestamp descending
-        allAuditLogs = data.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        renderAuditLogTable();
-    }
-}
-
-
-// --- UI Rendering Functions ---
-function renderChecklistTable() {
-    const tbody = document.getElementById('checklistTableBody');
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-
-    const filtered = allChecklists.filter(entry =>
-        (entry.room && entry.room.toLowerCase().includes(searchInput)) ||
-        (entry.date && entry.date.toLowerCase().includes(searchInput)) ||
-        (entry.user && entry.user.toLowerCase().includes(searchInput))
-    );
-
-    const start = (paginationState.checklists.currentPage - 1) * rowsPerPage;
-    const paginated = filtered.slice(start, start + rowsPerPage);
-    paginationState.checklists.totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
-
-    tbody.innerHTML = '';
-    if (paginated.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No checklists found.</td></tr>';
-    } else {
-        paginated.forEach(entry => {
-            const tr = document.createElement('tr');
-            tr.className = 'border-b hover:bg-gray-50';
-            const items = entry.items ? Object.entries(entry.items).map(([k, v]) => `<span class="capitalize">${k.replace(/_/g, ' ')}</span>: ${v}`).join(', ') : '';
-            tr.innerHTML = `
-                <td class="px-4 py-2">${entry.room}</td>
-                <td class="px-4 py-2">${entry.date}</td>
-                <td class="px-4 py-2">${items}</td>
-                <td class="px-4 py-2">
-                    <button onclick="deleteChecklist('${entry.id}')" class="py-1 px-3 bg-red-500 text-white rounded-md text-sm hover:bg-red-600">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    document.getElementById('checklistCurrentPageSpan').textContent = paginationState.checklists.currentPage;
-    document.getElementById('checklistTotalPagesSpan').textContent = paginationState.checklists.totalPages;
-    document.getElementById('checklistPrevBtn').disabled = paginationState.checklists.currentPage === 1;
-    document.getElementById('checklistNextBtn').disabled = paginationState.checklists.currentPage >= paginationState.checklists.totalPages;
-}
-
-function renderHousekeepingTable() {
-    const tbody = document.getElementById('statusReportTableBody');
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-
-    const filtered = allHousekeepingReports.filter(report =>
-        (report.room && report.room.toLowerCase().includes(searchInput)) ||
-        (report.category && report.category.toLowerCase().includes(searchInput)) ||
-        (report.status && report.status.toLowerCase().includes(searchInput))
-    );
-
-    const start = (paginationState.housekeeping.currentPage - 1) * rowsPerPage;
-    const paginated = filtered.slice(start, start + rowsPerPage);
-    paginationState.housekeeping.totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
-
-    tbody.innerHTML = '';
-    if (paginated.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No reports found.</td></tr>';
-    } else {
-        paginated.forEach(report => {
-            const tr = document.createElement('tr');
-            tr.className = 'border-b hover:bg-gray-50';
-            const statusColor = report.status === 'Completed' ? 'bg-green-100 text-green-800' : report.status === 'In Progress' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800';
-            const timestamp = report.timestamp ? new Date(report.timestamp).toLocaleString() : 'N/A';
-            tr.innerHTML = `
-                <td class="px-4 py-2">${report.room}</td>
-                <td class="px-4 py-2">${report.category}</td>
-                <td class="px-4 py-2"><span class="px-2 py-1 rounded-full text-xs font-medium ${statusColor}">${report.status}</span></td>
-                <td class="px-4 py-2 text-sm">${timestamp}</td>
-                <td class="px-4 py-2">
-                    <button onclick="deleteHousekeepingReport('${report.id}')" class="py-1 px-3 bg-red-500 text-white rounded-md text-sm hover:bg-red-600">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    document.getElementById('housekeepingCurrentPageSpan').textContent = paginationState.housekeeping.currentPage;
-    document.getElementById('housekeepingTotalPagesSpan').textContent = paginationState.housekeeping.totalPages;
-    document.getElementById('housekeepingPrevBtn').disabled = paginationState.housekeeping.currentPage === 1;
-    document.getElementById('housekeepingNextBtn').disabled = paginationState.housekeeping.currentPage >= paginationState.housekeeping.totalPages;
-}
-
-function renderInventoryTable() {
-    const tbody = document.getElementById('inventoryBody');
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-
-    const filtered = allInventoryItems.filter(item =>
-        (item.item && item.item.toLowerCase().includes(searchInput))
-    );
-
-    const start = (paginationState.inventory.currentPage - 1) * rowsPerPage;
-    const paginated = filtered.slice(start, start + rowsPerPage);
-    paginationState.inventory.totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
-
-    tbody.innerHTML = '';
-    if (paginated.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
-    } else {
-        paginated.forEach(item => {
-            const tr = document.createElement('tr');
-            tr.className = 'border-b hover:bg-gray-50';
-            const statusText = item.quantity <= item.lowStockThreshold ? 'Low Stock' : 'In Stock';
-            const statusColor = item.quantity <= item.lowStockThreshold ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800';
-            tr.innerHTML = `
-                <td class="px-4 py-2">${item.item}</td>
-                <td class="px-4 py-2">${item.quantity}</td>
-                <td class="px-4 py-2">${item.lowStockThreshold}</td>
-                <td class="px-4 py-2"><span class="px-2 py-1 rounded-full text-xs font-medium ${statusColor}">${statusText}</span></td>
-                <td class="px-4 py-2">
-                    <button onclick="deleteInventoryItem('${item.id}')" class="py-1 px-3 bg-red-500 text-white rounded-md text-sm hover:bg-red-600">Delete</button>
-                </td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    document.getElementById('inventoryCurrentPageSpan').textContent = paginationState.inventory.currentPage;
-    document.getElementById('inventoryTotalPagesSpan').textContent = paginationState.inventory.totalPages;
-    document.getElementById('inventoryPrevBtn').disabled = paginationState.inventory.currentPage === 1;
-    document.getElementById('inventoryNextBtn').disabled = paginationState.inventory.currentPage >= paginationState.inventory.totalPages;
-}
-
-function renderAuditLogTable() {
-    const tbody = document.getElementById('auditLogTableBody');
-    const searchInput = document.getElementById('searchInput').value.toLowerCase();
-
-    const filtered = allAuditLogs.filter(log =>
-        (log.user && log.user.toLowerCase().includes(searchInput)) ||
-        (log.action && log.action.toLowerCase().includes(searchInput)) ||
-        (log.details && log.details.toLowerCase().includes(searchInput))
-    );
-
-    const start = (paginationState.auditLog.currentPage - 1) * rowsPerPage;
-    const paginated = filtered.slice(start, start + rowsPerPage);
-    paginationState.auditLog.totalPages = Math.ceil(filtered.length / rowsPerPage) || 1;
-
-    tbody.innerHTML = '';
-    if (paginated.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">No audit logs found.</td></tr>';
-    } else {
-        paginated.forEach(log => {
-            const tr = document.createElement('tr');
-            tr.className = 'border-b hover:bg-gray-50';
-            const statusColor = log.status === 'success' ? 'text-green-600' : 'text-red-600';
-            const timestamp = new Date(log.timestamp).toLocaleString();
-            tr.innerHTML = `
-                <td class="px-4 py-2 text-sm">${timestamp}</td>
-                <td class="px-4 py-2 text-sm">${log.user}</td>
-                <td class="px-4 py-2 text-sm">${log.action}</td>
-                <td class="px-4 py-2 text-sm font-semibold ${statusColor}">${log.status}</td>
-                <td class="px-4 py-2 text-sm">${log.details}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-
-    document.getElementById('auditLogCurrentPageSpan').textContent = paginationState.auditLog.currentPage;
-    document.getElementById('auditLogTotalPagesSpan').textContent = paginationState.auditLog.totalPages;
-    document.getElementById('auditLogPrevBtn').disabled = paginationState.auditLog.currentPage === 1;
-    document.getElementById('auditLogNextBtn').disabled = paginationState.auditLog.currentPage >= paginationState.auditLog.totalPages;
-}
-
-// --- Event Handlers ---
-
-// Main login handler
-document.getElementById('loginForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-    const loginMessage = document.getElementById('loginMessage');
-    const username = document.getElementById('username').value;
-    const password = document.getElementById('password').value;
-
-    if (username && password) {
-        loginMessage.textContent = 'Logging in...';
-        // Mocking a login, as a real auth flow would be more complex
-        currentUser = username;
-        document.getElementById('usernameSpan').textContent = username; // Display the username
-        document.getElementById('loginSection').classList.add('hidden');
-        document.getElementById('mainApp').classList.remove('hidden');
-        await fetchChecklists(); // Load initial data
-        loginMessage.textContent = '';
-        addAuditLog('User Login', `User '${username}' logged in successfully.`);
-    } else {
-        loginMessage.textContent = 'Please enter a valid username and password.';
-        addAuditLog('User Login', `Login attempt failed for user '${username}'.`, 'error');
-    }
-});
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    addAuditLog('User Logout', `User logged out.`);
-    currentUser = null;
-    document.getElementById('mainApp').classList.add('hidden');
-    document.getElementById('loginSection').classList.remove('hidden');
-});
-
-// Tab switching logic
-function switchTab(tabId, fetchDataFunc) {
-    const sections = ['roomChecklistSection', 'housekeepingReportSection', 'inventorySection', 'auditLogSection'];
-    const tabs = ['tabChecklist', 'tabHousekeeping', 'tabInventory', 'tabAuditLog'];
-
-    sections.forEach(id => {
-        document.getElementById(id).classList.add('hidden');
-    });
-    tabs.forEach(id => {
-        document.getElementById(id).classList.remove('tab-active');
-    });
-
-    document.getElementById(tabId).classList.remove('hidden');
-    document.getElementById(`tab${tabId.replace('Section', '')}`).classList.add('tab-active');
-
-    // Fetch data for the new tab
-    fetchDataFunc();
-}
-
-document.getElementById('tabChecklist').addEventListener('click', () => switchTab('roomChecklistSection', fetchChecklists));
-document.getElementById('tabHousekeeping').addEventListener('click', () => switchTab('housekeepingReportSection', fetchHousekeepingReports));
-document.getElementById('tabInventory').addEventListener('click', () => switchTab('inventorySection', fetchInventoryItems));
-document.getElementById('tabAuditLog').addEventListener('click', () => switchTab('auditLogSection', fetchAuditLogs));
-
-// Form submission handlers
-document.getElementById('checklistForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = {
-        room: formData.get('room'),
-        date: formData.get('date'),
-        items: {
-            towels: formData.get('towels'),
-            bed_linen: formData.get('bed_linen'),
-            toiletries: formData.get('toiletries'),
-            toilet_paper: formData.get('toilet_paper')
-        }
-    };
-    addChecklist(data);
-    e.target.reset();
-});
-
-document.getElementById('housekeepingForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = {
-        room: formData.get('room'),
-        category: formData.get('category'),
-        status: formData.get('status'),
-        remarks: formData.get('remarks')
-    };
-    addHousekeepingReport(data);
-    e.target.reset();
-});
-
-document.getElementById('addInventoryForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-    const data = {
-        item: formData.get('item'),
-        quantity: formData.get('quantity'),
-        lowStockThreshold: formData.get('lowStockThreshold')
-    };
-    addInventoryItem(data);
-    e.target.reset();
-});
-
-// Pagination handlers (Note: these operate on the currently fetched data)
-document.getElementById('checklistPrevBtn').addEventListener('click', () => {
-    if (paginationState.checklists.currentPage > 1) {
-        paginationState.checklists.currentPage--;
-        renderChecklistTable();
-    }
-});
-document.getElementById('checklistNextBtn').addEventListener('click', () => {
-    if (paginationState.checklists.currentPage < paginationState.checklists.totalPages) {
-        paginationState.checklists.currentPage++;
-        renderChecklistTable();
-    }
-});
-
-document.getElementById('housekeepingPrevBtn').addEventListener('click', () => {
-    if (paginationState.housekeeping.currentPage > 1) {
-        paginationState.housekeeping.currentPage--;
-        renderHousekeepingTable();
-    }
-});
-document.getElementById('housekeepingNextBtn').addEventListener('click', () => {
-    if (paginationState.housekeeping.currentPage < paginationState.housekeeping.totalPages) {
-        paginationState.housekeeping.currentPage++;
-        renderHousekeepingTable();
-    }
-});
-
-document.getElementById('inventoryPrevBtn').addEventListener('click', () => {
-    if (paginationState.inventory.currentPage > 1) {
-        paginationState.inventory.currentPage--;
-        renderInventoryTable();
-    }
-});
-document.getElementById('inventoryNextBtn').addEventListener('click', () => {
-    if (paginationState.inventory.currentPage < paginationState.inventory.totalPages) {
-        paginationState.inventory.currentPage++;
-        renderInventoryTable();
-    }
-});
-
-document.getElementById('auditLogPrevBtn').addEventListener('click', () => {
-    if (paginationState.auditLog.currentPage > 1) {
-        paginationState.auditLog.currentPage--;
-        renderAuditLogTable();
-    }
-});
-document.getElementById('auditLogNextBtn').addEventListener('click', () => {
-    if (paginationState.auditLog.currentPage < paginationState.auditLog.totalPages) {
-        paginationState.auditLog.currentPage++;
-        renderAuditLogTable();
-    }
-});
-
-// Global search handler
-document.getElementById('searchInput').addEventListener('input', () => {
-    Object.values(paginationState).forEach(state => state.currentPage = 1);
-    const activeSection = document.querySelector('section:not(.hidden)').id;
-    if (activeSection === 'roomChecklistSection') renderChecklistTable();
-    if (activeSection === 'housekeepingReportSection') renderHousekeepingTable();
-    if (activeSection === 'inventorySection') renderInventoryTable();
-    if (activeSection === 'auditLogSection') renderAuditLogTable();
-});
-
-// Export to Excel handler
-document.getElementById('exportChecklistBtn').addEventListener('click', function() {
-    const dataToExport = allChecklists.map(item => {
-        const flatItems = {};
-        for (const key in item.items) {
-            flatItems[key] = item.items[key];
-        }
-        return { Room: item.room, Date: item.date, ...flatItems };
-    });
+/**
+ * Exports the data from the checklist table (Room, Date, Items) to an Excel file.
+ */
+function exportToExcel() {
+    const dataToExport = allChecklists.map(entry => ({
+        'Room': entry.room,
+        'Date': entry.date,
+        'Items': Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')
+    }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Checklist Data");
     XLSX.writeFile(wb, "Hotel_Room_Checklist.xlsx");
+}
+
+/**
+ * Prints the data from the checklist table (Room, Date, Items) in a new window.
+ */
+function printChecklists() {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Room Checklist</title>');
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: sans-serif; margin: 20px; }');
+    printWindow.document.write('h1 { text-align: center; margin-bottom: 20px; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }');
+    printWindow.document.write('th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }');
+    printWindow.document.write('th { background-color: #f2f2f2; }');
+    printWindow.document.write('</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write('<h1>Hotel Room Checklist</h1>');
+    printWindow.document.write('<table>');
+    printWindow.document.write('<thead><tr><th>Room</th><th>Date</th><th>Items</th></tr></thead>');
+    printWindow.document.write('<tbody>');
+
+    allChecklists.forEach(entry => {
+        printWindow.document.write('<tr>');
+        printWindow.document.write(`<td>${entry.room}</td>`);
+        printWindow.document.write(`<td>${entry.date}</td>`);
+        printWindow.document.write(`<td>${Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')}</td>`);
+        printWindow.document.write('</tr>');
+    });
+
+    printWindow.document.write('</tbody></table>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+}
+
+// Event listener for checklist form submission
+document.getElementById('checklistForm').addEventListener('submit', async function (e) {
+    e.preventDefault();
+
+    const room = document.getElementById('room').value;
+    const date = document.getElementById('date').value;
+
+    if (!room || !date) {
+        displayMessage('message', 'Please select a room and date.', true);
+        return;
+    }
+
+    const formData = new FormData(e.target);
+    const items = Object.fromEntries(formData.entries());
+    delete items.room; // Remove room from the 'items' object as it's a separate field
+    delete items.date; // Remove date from the 'items' object as it's a separate field
+
+    const data = {
+        room,
+        date,
+        items
+    };
+
+    try {
+        const res = await fetch(`${backendURL}/submit-checklist`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+
+        const result = await res.json();
+
+        let msg = result.message || 'Checklist submitted.';
+        if (result.emailSent) {
+            msg += ' Email sent for missing items.';
+        }
+        displayMessage('message', msg);
+
+        e.target.reset(); // Reset the form after successful submission
+        loadChecklists(); // Reload checklists to show the new entry
+    } catch (err) {
+        console.error('Error submitting checklist:', err);
+        displayMessage('message', 'An error occurred while submitting the checklist.', true);
+    }
 });
 
-// --- Initial Setup ---
-// The app will now start on a login page and only load data after a successful login.
-window.onload = function() {
-    document.getElementById('loginSection').classList.remove('hidden');
-    document.getElementById('mainApp').classList.add('hidden');
-};
+/**
+ * Fetches all checklists from the backend and updates the `allChecklists` array.
+ */
+async function loadChecklists() {
+    try {
+        const res = await fetch(`${backendURL}/checklists`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        allChecklists = await res.json();
+        renderChecklistTable();
+        renderMissingItemsSummary(); // Call to render missing items summary
+    } catch (err) {
+        console.error('Error loading checklists:', err);
+        displayMessage('message', 'Failed to load checklists.', true);
+    }
+}
+
+/**
+ * Renders the checklist table with filtered and paginated data.
+ */
+function renderChecklistTable() {
+    const tbody = document.getElementById('checklistBody');
+    const search = document.getElementById('searchInput').value.toLowerCase();
+
+    // Filter data based on search input
+    const filtered = allChecklists.filter(entry =>
+        entry.room.toLowerCase().includes(search) ||
+        entry.date.toLowerCase().includes(search) ||
+        JSON.stringify(entry.items).toLowerCase().includes(search) // Search in items too
+    );
+
+    // Apply pagination
+    const start = (currentPage - 1) * rowsPerPage;
+    const paginated = filtered.slice(start, start + rowsPerPage);
+
+    tbody.innerHTML = ''; // Clear existing rows
+    if (paginated.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No checklists found.</td></tr>';
+    } else {
+        paginated.forEach(entry => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${entry.room}</td>
+                <td class="border px-4 py-2">${entry.date}</td>
+                <td class="border px-4 py-2">${Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')}</td>
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editChecklist(${JSON.stringify(entry)})'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteChecklist("${entry._id}")'>Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    // Update pagination info and button states
+    const totalPages = Math.ceil(filtered.length / rowsPerPage);
+    document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages || 1}`;
+    document.getElementById('prevBtn').disabled = currentPage === 1;
+    document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+}
+
+/**
+ * Populates the edit form for a selected checklist entry.
+ * @param {object} entry - The checklist entry object to edit.
+ */
+function editChecklist(entry) {
+    const tbody = document.getElementById('checklistBody');
+    const existingRow = Array.from(tbody.children).find(row => {
+        return row.querySelector('button[onclick*="deleteChecklist"]').onclick.toString().includes(`"${entry._id}"`);
+    });
+
+    const itemsHtml = Object.keys(entry.items).map(key => `
+        <div class="flex items-center justify-between py-1">
+            <span class="font-medium">${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span>
+            <select id="item-${key}-${entry._id}" class="px-2 py-1 border rounded-md text-sm">
+                <option value="yes" ${entry.items[key] === 'yes' ? 'selected' : ''}>Yes</option>
+                <option value="no" ${entry.items[key] === 'no' ? 'selected' : ''}>No</option>
+            </select>
+        </div>
+    `).join('');
+
+    const editRowHtml = `
+        <tr class="bg-blue-50">
+            <td class="border px-4 py-2"><input type="text" id="editRoom-${entry._id}" value="${entry.room}" class="w-full px-2 py-1 border rounded-md" /></td>
+            <td class="border px-4 py-2"><input type="date" id="editDate-${entry._id}" value="${entry.date}" class="w-full px-2 py-1 border rounded-md" /></td>
+            <td class="border px-4 py-2">
+                <div class="space-y-1">
+                    ${itemsHtml}
+                </div>
+            </td>
+            <td class="border px-4 py-2">
+                <button class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition duration-300 ease-in-out mr-2" onclick='saveChecklist("${entry._id}")'>Save</button>
+                <button class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out" onclick='loadChecklists()'>Cancel</button>
+            </td>
+        </tr>
+    `;
+
+    if (existingRow) {
+        existingRow.outerHTML = editRowHtml;
+    } else {
+        tbody.insertAdjacentHTML('afterbegin', editRowHtml);
+    }
+}
+
+/**
+ * Saves the edited checklist entry to the backend.
+ * @param {string} id - The ID of the checklist entry to save.
+ */
+async function saveChecklist(id) {
+    const room = document.getElementById(`editRoom-${id}`).value;
+    const date = document.getElementById(`editDate-${id}`).value;
+
+    const itemElements = document.querySelectorAll(`[id^="item-"][id$="-${id}"]`);
+    const items = {};
+    itemElements.forEach(el => {
+        const key = el.id.replace(`item-`, '').replace(`-${id}`, '');
+        items[key] = el.value;
+    });
+
+    try {
+        const res = await fetch(`${backendURL}/checklists/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ room, date, items })
+        });
+
+        const result = await res.json();
+        displayMessage('message', result.message || 'Checklist updated successfully!');
+        await loadChecklists();
+    } catch (err) {
+        console.error('Error saving checklist:', err);
+        displayMessage('message', 'An error occurred while saving the checklist.', true);
+    }
+}
+
+/**
+ * Deletes a checklist entry from the backend.
+ * @param {string} id - The ID of the checklist entry to delete.
+ */
+async function deleteChecklist(id) {
+    if (!window.confirm("Are you sure you want to delete this checklist?")) return; // Replace with custom modal
+
+    try {
+        const res = await fetch(`${backendURL}/checklists/${id}`, {
+            method: 'DELETE'
+        });
+
+        const result = await res.json();
+        displayMessage('message', result.message || 'Checklist deleted successfully!');
+        await loadChecklists();
+    } catch (err) {
+        console.error('Error deleting checklist:', err);
+        displayMessage('message', 'An error occurred while deleting the checklist.', true);
+    }
+}
+
+// Event listeners for checklist search and pagination
+document.getElementById('searchInput').addEventListener('input', () => {
+    currentPage = 1;
+    renderChecklistTable();
+});
+
+document.getElementById('prevBtn').addEventListener('click', () => {
+    if (currentPage > 1) {
+        currentPage--;
+        renderChecklistTable();
+    }
+});
+
+document.getElementById('nextBtn').addEventListener('click', () => {
+    const totalPages = Math.ceil(allChecklists.filter(entry =>
+        entry.room.toLowerCase().includes(document.getElementById('searchInput').value.toLowerCase()) ||
+        entry.date.toLowerCase().includes(document.getElementById('searchInput').value.toLowerCase())
+    ).length / rowsPerPage);
+
+    if (currentPage < totalPages) {
+        currentPage++;
+        renderChecklistTable();
+    }
+});
+
+// --- Missing Items Summary Functionality ---
+/**
+ * Renders a summary of missing items and the rooms they are missing from for a given date.
+ */
+function renderMissingItemsSummary() {
+    const summaryContainer = document.getElementById('missingItemsSummary');
+    if (!summaryContainer) return; // Exit if the container doesn't exist (e.g., before login)
+
+    const filterDateInput = document.getElementById('missingItemsDateFilter').value;
+    let checklistsForSummary = allChecklists;
+
+    if (filterDateInput) {
+        const selectedDate = new Date(filterDateInput);
+        selectedDate.setHours(0, 0, 0, 0);
+
+        checklistsForSummary = allChecklists.filter(entry => {
+            const entryDate = new Date(entry.date);
+            entryDate.setHours(0, 0, 0, 0);
+            return entryDate.getTime() === selectedDate.getTime();
+        });
+    }
+
+    const missingItemsCount = {}; // { item: count }
+    const missingItemsRooms = {}; // { item: [room1, room2] }
+
+    checklistsForSummary.forEach(entry => {
+        for (const itemKey in entry.items) {
+            if (entry.items[itemKey] === 'no') {
+                const formattedItem = itemKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                missingItemsCount[formattedItem] = (missingItemsCount[formattedItem] || 0) + 1;
+                if (!missingItemsRooms[formattedItem]) {
+                    missingItemsRooms[formattedItem] = [];
+                }
+                missingItemsRooms[formattedItem].push(entry.room);
+            }
+        }
+    });
+
+    let summaryHtml = '<h3 class="text-xl font-semibold mb-3 text-gray-800">Missing Items Summary</h3>';
+    if (Object.keys(missingItemsCount).length === 0) {
+        summaryHtml += '<p class="text-gray-600">No missing items found for the selected date.</p>';
+    } else {
+        summaryHtml += '<ul class="list-disc pl-5 space-y-2">';
+        for (const item in missingItemsCount) {
+            summaryHtml += `<li><span class="font-semibold">${item}</span>: ${missingItemsCount[item]} missing. (Rooms: ${missingItemsRooms[item].join(', ')})</li>`;
+        }
+        summaryHtml += '</ul>';
+    }
+
+    summaryContainer.innerHTML = summaryHtml;
+}
+
+// Event listeners for missing items date filter
+document.addEventListener('DOMContentLoaded', () => {
+    const missingItemsDateFilter = document.getElementById('missingItemsDateFilter');
+    if (missingItemsDateFilter) {
+        missingItemsDateFilter.addEventListener('change', renderMissingItemsSummary);
+    }
+    const clearMissingItemsDateFilterBtn = document.getElementById('clearMissingItemsDateFilter');
+    if (clearMissingItemsDateFilterBtn) {
+        clearMissingItemsDateFilterBtn.addEventListener('click', () => {
+            missingItemsDateFilter.value = '';
+            renderMissingItemsSummary();
+        });
+    }
+});
+
+
+// --- Housekeeping Report Functionality ---
+
+// Event listener for status report form submission
+document.getElementById('statusReportForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const res = await fetch(`${backendURL}/submit-status-report`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        const result = await res.json();
+        displayMessage('statusMessage', result.message || 'Status report submitted.');
+        e.target.reset();
+        loadStatusReports();
+    } catch (err) {
+        console.error('Error submitting status report:', err);
+        displayMessage('statusMessage', 'An error occurred while submitting the report.', true);
+    }
+});
+
+/**
+ * Fetches all status reports from the backend and updates the `allStatusReports` array.
+ */
+async function loadStatusReports() {
+    try {
+        const res = await fetch(`${backendURL}/status-reports`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        allStatusReports = await res.json();
+        filteredStatusReports = [...allStatusReports]; // Initialize filtered data with all data
+        renderStatusReportTable();
+    } catch (err) {
+        console.error('Error loading status reports:', err);
+        displayMessage('statusMessage', 'Failed to load status reports.', true);
+    }
+}
+
+/**
+ * Renders the status report table with filtered data.
+ */
+function renderStatusReportTable() {
+    const tbody = document.getElementById('statusReportBody');
+    tbody.innerHTML = '';
+    if (filteredStatusReports.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No housekeeping reports found.</td></tr>';
+    } else {
+        filteredStatusReports.forEach(report => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${report.room}</td>
+                <td class="border px-4 py-2">${report.category}</td>
+                <td class="border px-4 py-2">${report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>
+                <td class="border px-4 py-2">${report.remarks}</td>
+                <td class="border px-4 py-2">${new Date(report.dateTime).toLocaleString()}</td>
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editStatusReport("${report._id}")'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteStatusReport("${report._id}")'>Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+/**
+ * Filters the `allStatusReports` by the selected date and updates `filteredStatusReports`.
+ */
+function filterStatusReportsByDate() {
+    const filterDateInput = document.getElementById('filterDate').value;
+    if (filterDateInput) {
+        const selectedDate = new Date(filterDateInput);
+        // Normalize selectedDate to start of day for accurate comparison
+        selectedDate.setHours(0, 0, 0, 0);
+
+        filteredStatusReports = allStatusReports.filter(report => {
+            const reportDate = new Date(report.dateTime);
+            reportDate.setHours(0, 0, 0, 0); // Normalize report date to start of day
+            return reportDate.getTime() === selectedDate.getTime();
+        });
+    } else {
+        filteredStatusReports = [...allStatusReports]; // If no date selected, show all
+    }
+    renderStatusReportTable();
+}
+
+/**
+ * Clears the date filter and resets `filteredStatusReports` to all reports.
+ */
+function clearStatusDateFilter() {
+    document.getElementById('filterDate').value = ''; // Clear the input field
+    filteredStatusReports = [...allStatusReports]; // Reset to all reports
+    renderStatusReportTable();
+}
+
+/**
+ * Exports the current `filteredStatusReports` (specific columns) to an Excel file.
+ */
+function exportStatusReportsToExcel() {
+    // Prepare data with only the desired columns
+    const dataToExport = filteredStatusReports.map(report => ({
+        'Room': report.room,
+        'Category': report.category,
+        'Status': report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format status for readability
+        'Remarks': report.remarks,
+        'Date & Time': new Date(report.dateTime).toLocaleString()
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport); // Use json_to_sheet for structured data
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Housekeeping Reports");
+    XLSX.writeFile(wb, "Hotel_Housekeeping_Reports.xlsx");
+}
+
+/**
+ * Prints the current `filteredStatusReports` (specific columns) in a new window.
+ */
+function printStatusReports() {
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write('<html><head><title>Housekeeping Report</title>');
+    // Add basic styling for print
+    printWindow.document.write('<style>');
+    printWindow.document.write('body { font-family: sans-serif; margin: 20px; }');
+    printWindow.document.write('h1 { text-align: center; margin-bottom: 20px; }');
+    printWindow.document.write('table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }');
+    printWindow.document.write('th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }');
+    printWindow.document.write('th { background-color: #f2f2f2; }');
+    printWindow.document.write('</style>');
+    printWindow.document.write('</head><body>');
+    printWindow.document.write('<h1>Housekeeping Room Status Report</h1>');
+    printWindow.document.write('<table>');
+    printWindow.document.write('<thead><tr><th>Room</th><th>Category</th><th>Status</th><th>Remarks</th><th>Date & Time</th></tr></thead>');
+    printWindow.document.write('<tbody>');
+
+    filteredStatusReports.forEach(report => {
+        printWindow.document.write('<tr>');
+        printWindow.document.write(`<td>${report.room}</td>`);
+        printWindow.document.write(`<td>${report.category}</td>`);
+        printWindow.document.write(`<td>${report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>`);
+        printWindow.document.write(`<td>${report.remarks}</td>`);
+        printWindow.document.write(`<td>${new Date(report.dateTime).toLocaleString()}</td>`);
+        printWindow.document.write('</tr>');
+    });
+
+    printWindow.document.write('</tbody></table>');
+    printWindow.document.write('</body></html>');
+    printWindow.document.close();
+    printWindow.print();
+}
+
+/**
+ * Populates the edit form for a selected status report entry.
+ * @param {string} id - The ID of the status report entry to edit.
+ */
+function editStatusReport(id) {
+    const reportToEdit = allStatusReports.find(report => report._id === id);
+    if (!reportToEdit) {
+        console.error('Report not found for editing:', id);
+        return;
+    }
+
+    const tbody = document.getElementById('statusReportBody');
+    const rowToReplace = Array.from(tbody.children).find(row => {
+        return row.querySelector('button[onclick*="deleteStatusReport"]').onclick.toString().includes(`"${id}"`);
+    });
+
+    const editRowHtml = `
+        <tr class="bg-blue-50">
+            <td class="border px-4 py-2"><input type="text" id="editReportRoom-${id}" value="${reportToEdit.room}" class="w-full px-2 py-1 border rounded-md" /></td>
+            <td class="border px-4 py-2">
+                <select id="editReportCategory-${id}" class="w-full px-2 py-1 border rounded-md">
+                    <option value="delux1" ${reportToEdit.category === 'delux1' ? 'selected' : ''}>Delux 1</option>
+                    <option value="delux2" ${reportToEdit.category === 'delux2' ? 'selected' : ''}>Delux 2</option>
+                    <option value="standard" ${reportToEdit.category === 'standard' ? 'selected' : ''}>Standard</option>
+                </select>
+            </td>
+            <td class="border px-4 py-2">
+                <select id="editReportStatus-${id}" class="w-full px-2 py-1 border rounded-md">
+                    <option value="arrival" ${reportToEdit.status === 'arrival' ? 'selected' : ''}>Arrival</option>
+                    <option value="occupied" ${reportToEdit.status === 'occupied' ? 'selected' : ''}>Occupied</option>
+                    <option value="departure" ${reportToEdit.status === 'departure' ? 'selected' : ''}>Departure</option>
+                    <option value="vacant_ready" ${reportToEdit.status === 'vacant_ready' ? 'selected' : ''}>Vacant Ready</option>
+                    <option value="vacant_not_ready" ${reportToEdit.status === 'vacant_not_ready' ? 'selected' : ''}>Vacant but not Ready</option>
+                    <option value="out_of_order" ${reportToEdit.status === 'out_of_order' ? 'selected' : ''}>Out of Order</option>
+                    <option value="out_of_service" ${reportToEdit.status === 'out_of_service' ? 'selected' : ''}>Out of Service</option>
+                </select>
+            </td>
+            <td class="border px-4 py-2"><textarea id="editReportRemarks-${id}" class="w-full px-2 py-1 border rounded-md" rows="2">${reportToEdit.remarks}</textarea></td>
+            <td class="border px-4 py-2"><input type="datetime-local" id="editReportDateTime-${id}" value="${new Date(reportToEdit.dateTime).toISOString().slice(0, 16)}" class="w-full px-2 py-1 border rounded-md" /></td>
+            <td class="border px-4 py-2">
+                <button class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition duration-300 ease-in-out mr-2" onclick='saveStatusReport("${id}")'>Save</button>
+                <button class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out" onclick='loadStatusReports()'>Cancel</button>
+            </td>
+        </tr>
+    `;
+    if (rowToReplace) {
+        rowToReplace.outerHTML = editRowHtml;
+    } else {
+        tbody.insertAdjacentHTML('afterbegin', editRowHtml);
+    }
+}
+
+/**
+ * Saves the edited status report entry to the backend.
+ * @param {string} id - The ID of the status report entry to save.
+ */
+async function saveStatusReport(id) {
+    const room = document.getElementById(`editReportRoom-${id}`).value;
+    const category = document.getElementById(`editReportCategory-${id}`).value;
+    const status = document.getElementById(`editReportStatus-${id}`).value;
+    const remarks = document.getElementById(`editReportRemarks-${id}`).value;
+    const dateTime = document.getElementById(`editReportDateTime-${id}`).value;
+
+    const updatedData = { room, category, status, remarks, dateTime };
+
+    try {
+        const res = await fetch(`${backendURL}/status-reports/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(updatedData)
+        });
+        const result = await res.json();
+        displayMessage('statusMessage', result.message || 'Report updated successfully!');
+        loadStatusReports();
+    } catch (err) {
+        console.error('Error saving status report:', err);
+        displayMessage('statusMessage', 'An error occurred while saving the report.', true);
+    }
+}
+
+/**
+ * Deletes a status report entry from the backend.
+ * @param {string} id - The ID of the status report entry to delete.
+ */
+async function deleteStatusReport(id) {
+    if (!window.confirm("Are you sure you want to delete this status report?")) return; // Replace with custom modal
+
+    try {
+        const res = await fetch(`${backendURL}/status-reports/${id}`, {
+            method: 'DELETE'
+        });
+        const result = await res.json();
+        displayMessage('statusMessage', result.message || 'Report deleted successfully!');
+        loadStatusReports();
+    } catch (err) {
+        console.error('Error deleting status report:', err);
+        displayMessage('statusMessage', 'An error occurred while deleting the report.', true);
+    }
+}
+
+
+// --- Inventory Management Functionality ---
+
+// Event listener for inventory form submission
+document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const item = document.getElementById('inventoryItem').value;
+    const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
+    const action = document.getElementById('inventoryAction').value;
+
+    if (!item || isNaN(quantity) || quantity <= 0) {
+        displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${backendURL}/inventory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item, quantity, action })
+        });
+        const result = await res.json();
+        let msg = result.message || 'Inventory updated successfully.';
+        if (result.lowStockEmailSent) {
+            msg += ' Low stock email sent.';
+        }
+        displayMessage('inventoryMessage', msg);
+        e.target.reset();
+        loadInventory();
+    } catch (err) {
+        console.error('Error updating inventory:', err);
+        displayMessage('inventoryMessage', 'An error occurred while updating the inventory.', true);
+    }
+});
+
+/**
+ * Fetches all inventory items from the backend and updates the `allInventory` array.
+ */
+async function loadInventory() {
+    try {
+        const res = await fetch(`${backendURL}/inventory`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        allInventory = await res.json();
+        renderInventoryTable();
+    } catch (err) {
+        console.error('Error loading inventory:', err);
+        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
+    }
+}
+
+/**
+ * Renders the inventory table with filtered data.
+ */
+function renderInventoryTable() {
+    const tbody = document.getElementById('inventoryBody');
+    const search = document.getElementById('inventorySearch').value.toLowerCase();
+
+    const filteredInventory = allInventory.filter(item =>
+        item.item.toLowerCase().includes(search)
+    );
+
+    tbody.innerHTML = '';
+    if (filteredInventory.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
+    } else {
+        filteredInventory.forEach(item => {
+            const tr = document.createElement('tr');
+            const lowStockClass = item.quantity <= 10 ? 'bg-red-100' : '';
+            tr.className = lowStockClass;
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${item.item}</td>
+                <td class="border px-4 py-2">${item.quantity}</td>
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+/**
+ * Populates the inventory form for editing an item.
+ * @param {string} id - The ID of the inventory item to edit.
+ */
+function editInventoryItem(id) {
+    const itemToEdit = allInventory.find(item => item._id === id);
+    if (!itemToEdit) {
+        console.error('Item not found for editing:', id);
+        return;
+    }
+    const tbody = document.getElementById('inventoryBody');
+    const rowToReplace = Array.from(tbody.children).find(row => {
+        return row.querySelector('button[onclick*="deleteInventoryItem"]').onclick.toString().includes(`"${id}"`);
+    });
+
+    const editRowHtml = `
+        <tr class="bg-blue-50">
+            <td class="border px-4 py-2"><input type="text" id="editItem-${id}" value="${itemToEdit.item}" class="w-full px-2 py-1 border rounded-md" /></td>
+            <td class="border px-4 py-2"><input type="number" id="editQuantity-${id}" value="${itemToEdit.quantity}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
+            <td class="border px-4 py-2">
+                <button class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition duration-300 ease-in-out mr-2" onclick='saveInventoryItem("${id}")'>Save</button>
+                <button class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out" onclick='loadInventory()'>Cancel</button>
+            </td>
+        </tr>
+    `;
+
+    if (rowToReplace) {
+        rowToReplace.outerHTML = editRowHtml;
+    } else {
+        tbody.insertAdjacentHTML('afterbegin', editRowHtml);
+    }
+}
+
+
+/**
+ * Saves the edited inventory item to the backend.
+ * @param {string} id - The ID of the inventory item to save.
+ */
+async function saveInventoryItem(id) {
+    const item = document.getElementById(`editItem-${id}`).value;
+    const quantity = parseInt(document.getElementById(`editQuantity-${id}`).value, 10);
+
+    if (!item || isNaN(quantity)) {
+        displayMessage('inventoryMessage', 'Please enter a valid item and quantity.', true);
+        return;
+    }
+    
+    try {
+        const res = await fetch(`${backendURL}/inventory/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item, quantity })
+        });
+        const result = await res.json();
+        displayMessage('inventoryMessage', result.message || 'Inventory item updated successfully!');
+        loadInventory();
+    } catch (err) {
+        console.error('Error saving inventory item:', err);
+        displayMessage('inventoryMessage', 'An error occurred while saving the inventory item.', true);
+    }
+}
+
+
+/**
+ * Deletes an inventory item from the backend.
+ * @param {string} id - The ID of the inventory item to delete.
+ */
+async function deleteInventoryItem(id) {
+    if (!window.confirm("Are you sure you want to delete this inventory item?")) return;
+
+    try {
+        const res = await fetch(`${backendURL}/inventory/${id}`, {
+            method: 'DELETE'
+        });
+        const result = await res.json();
+        displayMessage('inventoryMessage', result.message || 'Inventory item deleted successfully!');
+        loadInventory();
+    } catch (err) {
+        console.error('Error deleting inventory item:', err);
+        displayMessage('inventoryMessage', 'An error occurred while deleting the inventory item.', true);
+    }
+}
+
+/**
+ * Exports the inventory table to an Excel file.
+ */
+function exportInventoryToExcel() {
+    const dataToExport = allInventory.map(item => ({
+        'Item Name': item.item,
+        'Stock Level': item.quantity
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Inventory Data");
+    XLSX.writeFile(wb, "Hotel_Inventory.xlsx");
+}
+
+// Event listener for inventory search
+document.getElementById('inventorySearch').addEventListener('input', renderInventoryTable);
+
+
+// --- Initial Load ---
+// Ensures that the main application content is hidden until login is successful.
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('mainApp').style.display = 'none';
+});
