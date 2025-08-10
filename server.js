@@ -284,7 +284,7 @@ app.post('/inventory', async (req, res) => {
         } else if (action === 'add') {
             // Item does not exist, create a new one only if action is 'add'
             // Use provided lowStockLevel or default to 10
-            inventoryItem = new Inventory({ item, quantity, lowStockLevel: lowStockLevel || 10 }); 
+            inventoryItem = new Inventory({ item, quantity, lowStockLevel }); 
             await inventoryItem.save();
             lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
             return res.status(201).json({ message: 'New inventory item added', lowStockEmailSent });
