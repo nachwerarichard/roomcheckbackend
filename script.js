@@ -816,7 +816,7 @@ function editInventoryItem(id) {
         <tr class="bg-blue-50">
             <td class="border px-4 py-2"><input type="text" id="editItem-${id}" value="${itemToEdit.item}" class="w-full px-2 py-1 border rounded-md" /></td>
             <td class="border px-4 py-2"><input type="number" id="editQuantity-${id}" value="${itemToEdit.quantity}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
-            <td class="border px-4 py-2"><input type="number" id="editQuantity-${id}" value="${itemToEdit.lowStockLevel}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
+            <td class="border px-4 py-2"><input type="number" id="editLowstocklevel-${id}" value="${itemToEdit.lowStockLevel}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
             <td class="border px-4 py-2">
                 <button class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition duration-300 ease-in-out mr-2" onclick='saveInventoryItem("${id}")'>Save</button>
                 <button class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out" onclick='loadInventory()'>Cancel</button>
@@ -839,6 +839,7 @@ function editInventoryItem(id) {
 async function saveInventoryItem(id) {
     const item = document.getElementById(`editItem-${id}`).value;
     const quantity = parseInt(document.getElementById(`editQuantity-${id}`).value, 10);
+    const lowStockLevel = parseInt(document.getElementById(`editLowstocklevel-${id}`).value, 10);
 
     if (!item || isNaN(quantity)) {
         displayMessage('inventoryMessage', 'Please enter a valid item and quantity.', true);
