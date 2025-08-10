@@ -21,13 +21,16 @@ mongoose.connect(process.env.MONGO_URI)
 // Middleware
 app.use(express.json());
 const corsOptions = {
-  origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
-  optionsSuccessStatus: 200 // For legacy browsers
+  origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
+  optionsSuccessStatus: 200 // For legacy browsers
 };
-// Enable pre-flight for all routes with a named wildcard
-app.options('/*', cors(corsOptions));// --- Mongoose Schemas and Models ---
-// Add this line after your cors middleware
-app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
+app.use(cors(corsOptions));
+
+// This line is correct and sufficient
+app.options('/*', cors(corsOptions)); // Enable pre-flight for all routes
+
+// --- Mongoose Schemas and Models ---
+// ... the rest of your code is fine
 // Checklist Schema and Model (from your original code)
 const checklistSchema = new mongoose.Schema({
   room: { type: String, required: true },
