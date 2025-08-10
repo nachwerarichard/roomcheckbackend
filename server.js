@@ -19,16 +19,16 @@ mongoose.connect(process.env.MONGO_URI)
   });
 
 // Middleware
+// Middleware
 app.use(express.json());
 const corsOptions = {
   origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
   optionsSuccessStatus: 200 // For legacy browsers
 };
-app.use(cors(corsOptions));
+app.use(cors(corsOptions)); // This line is correct and sufficient for all CORS needs
 
-// This line is correct and sufficient
-app.options('/*', cors(corsOptions)); // Enable pre-flight for all routes
-
+// --- Mongoose Schemas and Models ---
+// ... the rest of your code is fine
 // --- Mongoose Schemas and Models ---
 // ... the rest of your code is fine
 // Checklist Schema and Model (from your original code)
