@@ -160,6 +160,52 @@ app.post('/submit-checklist', async (req, res) => {
   }
 });
 
+// NEW: Add a POST endpoint for '/checklists' to match the frontend's request.
+// It uses the same logic as the '/submit-checklist' endpoint.
+app.post('/checklists', async (req, res) => {
+  const { room, date, items, user } = req.body;
+  const action = 'CREATE_CHECKLIST';
+
+  if (!room || !date || !items) {
+    await createAuditLog(user, action, 'FAILURE', { message: 'Missing fields' });
+    return res.status(400).json({ message: 'Missing fields' });
+  }
+
+  const checklist = new Checklist({ room, date, items });
+  let emailSent = false;
+
+  try {
+    await checklist.save();
+    await createAuditLog(user, action, 'SUCCESS', { room, date });
+
+    const missingItems = Object.entries(items).filter(([, val]) => val === 'no');
+    if (missingItems.length > 0) {
+      const html = `<p>Room <strong>${room}</strong> on <strong>${date}</strong> is missing:</p>
+        <ul>${missingItems.map(([key]) => `<li>${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</li>`).join('')}</ul>
+        <p>Please address this immediately.</p>`;
+
+      try {
+        await transporter.sendMail({
+          from: process.env.EMAIL_USER,
+          to: process.env.EMAIL_USER,
+          subject: `Urgent: Missing Items in Room ${room} on ${date}`,
+          html,
+        });
+        console.log('📧 Email sent for missing items.');
+        emailSent = true;
+      } catch (emailErr) {
+        console.error('❌ Email sending failed:', emailErr);
+      }
+    }
+
+    res.status(201).json({ message: 'Checklist submitted successfully', checklist, emailSent });
+  } catch (err) {
+    await createAuditLog(user, action, 'FAILURE', { error: err.message, room, date });
+    console.error('❌ Error saving checklist:', err);
+    res.status(500).json({ message: 'Server error while submitting checklist' });
+  }
+});
+
 app.get('/checklists', async (req, res) => {
   try {
     const data = await Checklist.find().sort({ date: -1, createdAt: -1 });
@@ -238,7 +284,7 @@ app.get('/status-reports', async (req, res) => {
   }
 });
 
-// NEW: Add a GET endpoint for '/reports' that points to the same data
+// Add a GET endpoint for '/reports' that points to the same data
 // as '/status-reports' to fix the 404 error from the client.
 app.get('/reports', async (req, res) => {
   try {
@@ -320,7 +366,7 @@ app.put('/inventory/:id', async (req, res) => {
   const { quantity, user } = req.body;
   const action = 'UPDATE_INVENTORY_ITEM';
 
-  // NEW: Add a check for a valid ID
+  // Add a check for a valid ID
   if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
     await createAuditLog(user, action, 'FAILURE', { message: 'Invalid or missing ID', itemId: req.params.id });
     return res.status(400).json({ message: 'Invalid or missing inventory item ID' });
@@ -371,7 +417,7 @@ app.delete('/inventory/:id', async (req, res) => {
   const { user } = req.body;
   const action = 'DELETE_INVENTORY_ITEM';
   
-  // NEW: Add a check for a valid ID
+  // Add a check for a valid ID
   if (!req.params.id || !mongoose.Types.ObjectId.isValid(req.params.id)) {
     await createAuditLog(user, action, 'FAILURE', { message: 'Invalid or missing ID', itemId: req.params.id });
     return res.status(400).json({ message: 'Invalid or missing inventory item ID' });
