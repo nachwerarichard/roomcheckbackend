@@ -786,7 +786,6 @@ if (item.quantity <= item.lowStockLevel) {
             
             // Correctly apply the class to the row.
             // This ensures other classes on the row are not overwritten.
-            tr.className = `${lowStockClass}`; 
             
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
