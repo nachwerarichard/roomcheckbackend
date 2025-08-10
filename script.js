@@ -717,9 +717,11 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
     const item = document.getElementById('inventoryItem').value;
     const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
     const action = document.getElementById('inventoryAction').value;
+    // 🆕 NEW: Get the low stock level from the form
+    const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
 
-    if (!item || isNaN(quantity) || quantity <= 0) {
-        displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
+    if (!item || isNaN(quantity) || quantity <= 0 || isNaN(lowStockLevel) || lowStockLevel < 0) {
+        displayMessage('inventoryMessage', 'Please enter a valid item name, quantity, and low stock level.', true);
         return;
     }
 
@@ -727,7 +729,8 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
         const res = await fetch(`${backendURL}/inventory`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity, action })
+            // 🆕 NEW: Include the lowStockLevel in the request body
+            body: JSON.stringify({ item, quantity, action, lowStockLevel })
         });
         const result = await res.json();
         let msg = result.message || 'Inventory updated successfully.';
@@ -773,16 +776,17 @@ function renderInventoryTable() {
 
     tbody.innerHTML = '';
     if (filteredInventory.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
     } else {
         filteredInventory.forEach(item => {
             const tr = document.createElement('tr');
-            const lowStockClass = item.quantity <= 10 ? 'bg-red-100' : '';
+            // 🆕 UPDATED: Use the item's specific lowStockLevel for the alert class
+            const lowStockClass = item.quantity <= item.lowStockLevel ? 'bg-red-100' : '';
             tr.className = lowStockClass;
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
                 <td class="border px-4 py-2">${item.quantity}</td>
-                <td class="border px-4 py-2">
+                <td class="border px-4 py-2">${item.lowStockLevel}</td> <td class="border px-4 py-2">
                     <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
                     <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
                 </td>
@@ -811,6 +815,7 @@ function editInventoryItem(id) {
         <tr class="bg-blue-50">
             <td class="border px-4 py-2"><input type="text" id="editItem-${id}" value="${itemToEdit.item}" class="w-full px-2 py-1 border rounded-md" /></td>
             <td class="border px-4 py-2"><input type="number" id="editQuantity-${id}" value="${itemToEdit.quantity}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
+            <td class="border px-4 py-2"><input type="number" id="editLowStockLevel-${id}" value="${itemToEdit.lowStockLevel}" class="w-full px-2 py-1 border rounded-md" min="0" /></td>
             <td class="border px-4 py-2">
                 <button class="bg-green-600 text-white px-3 py-1 rounded-md hover:bg-green-700 transition duration-300 ease-in-out mr-2" onclick='saveInventoryItem("${id}")'>Save</button>
                 <button class="bg-gray-500 text-white px-3 py-1 rounded-md hover:bg-gray-600 transition duration-300 ease-in-out" onclick='loadInventory()'>Cancel</button>
@@ -833,9 +838,11 @@ function editInventoryItem(id) {
 async function saveInventoryItem(id) {
     const item = document.getElementById(`editItem-${id}`).value;
     const quantity = parseInt(document.getElementById(`editQuantity-${id}`).value, 10);
+    // 🆕 NEW: Get the edited low stock level
+    const lowStockLevel = parseInt(document.getElementById(`editLowStockLevel-${id}`).value, 10);
 
-    if (!item || isNaN(quantity)) {
-        displayMessage('inventoryMessage', 'Please enter a valid item and quantity.', true);
+    if (!item || isNaN(quantity) || isNaN(lowStockLevel) || lowStockLevel < 0) {
+        displayMessage('inventoryMessage', 'Please enter a valid item, quantity, and low stock level.', true);
         return;
     }
     
@@ -843,7 +850,8 @@ async function saveInventoryItem(id) {
         const res = await fetch(`${backendURL}/inventory/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity })
+            // 🆕 NEW: Include the lowStockLevel in the PUT request body
+            body: JSON.stringify({ item, quantity, lowStockLevel })
         });
         const result = await res.json();
         displayMessage('inventoryMessage', result.message || 'Inventory item updated successfully!');
@@ -879,9 +887,11 @@ async function deleteInventoryItem(id) {
  * Exports the inventory table to an Excel file.
  */
 function exportInventoryToExcel() {
+    // 🆕 UPDATED: Include Low Stock Level in the exported data
     const dataToExport = allInventory.map(item => ({
         'Item Name': item.item,
-        'Stock Level': item.quantity
+        'Stock Level': item.quantity,
+        'Low Stock Level': item.lowStockLevel
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
