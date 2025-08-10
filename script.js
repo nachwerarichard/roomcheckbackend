@@ -21,18 +21,7 @@ const inventorySection = document.getElementById('inventorySection'); // New sec
  * @param {string} tabName - 'checklist', 'housekeeping', or 'inventory'
  */
 // Function to handle the logout process
-function logout() {
-    // Hide the main application dashboard
-    document.getElementById('mainApp').classList.add('hidden');
-    // Show the login section
-    document.getElementById('loginSection').classList.remove('hidden');
-    // Optional: Clear any stored data, like user session or local storage
-    localStorage.clear();
-    // Optional: Reset the login form
-    document.getElementById('username').value = '';
-    document.getElementById('password').value = '';
-    document.getElementById('loginMsg').textContent = '';
-}
+
 
 function showTab(tabName) {
     // Hide all sections first
@@ -117,6 +106,18 @@ async function login() {
         console.error('Login error:', err);
         displayMessage('loginMsg', 'Server error during login.', true);
     }
+}
+function logout() {
+    // Hide the main application dashboard
+    document.getElementById('mainApp').classList.add('hidden');
+    // Show the login section
+    document.getElementById('loginSection').classList.remove('hidden');
+    // Optional: Clear any stored data, like user session or local storage
+    localStorage.clear();
+    // Optional: Reset the login form
+    document.getElementById('username').value = '';
+    document.getElementById('password').value = '';
+    document.getElementById('loginMsg').textContent = '';
 }
 
 // --- Room Checklist Functionality ---
