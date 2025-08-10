@@ -35,7 +35,7 @@ const checklistSchema = new mongoose.Schema({
   items: { type: Object, required: true },
 }, { timestamps: true });
 
-const Checklist = mongoose = mongoose.model('Checklist', checklistSchema);
+const Checklist = mongoose.model('Checklist', checklistSchema);
 
 // StatusReport Schema and Model
 const statusReportSchema = new mongoose.Schema({
