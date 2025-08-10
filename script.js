@@ -62,23 +62,6 @@ async function fetchData(endpoint, options = {}) {
     }
 }
 
-// Add an audit log entry
-async function addAuditLog(action, details, status = 'success') {
-    if (!currentUser) return; // Don't log if not authenticated
-    await fetchData('audit-logs', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            user: currentUser,
-            action: action,
-            details: details,
-            status: status,
-            timestamp: new Date().toISOString()
-        })
-    });
-    // We don't wait for a response here to keep the main thread moving
-}
-
 // Fetch all checklists
 async function fetchChecklists() {
     const data = await fetchData('checklists');
@@ -97,11 +80,9 @@ async function addChecklist(data) {
     });
     if (response) {
         document.getElementById('checklistMessage').textContent = 'Checklist submitted successfully.';
-        // addAuditLog('Checklist Submission', `Submitted checklist for room ${data.room}`);
         fetchChecklists(); // Refresh the table
     } else {
         document.getElementById('checklistMessage').textContent = 'Failed to submit checklist.';
-        // addAuditLog('Checklist Submission', `Failed to submit checklist for room ${data.room}`, 'error');
     }
 }
 
@@ -111,10 +92,7 @@ async function deleteChecklist(id) {
         method: 'DELETE'
     });
     if (response) {
-        // addAuditLog('Checklist Deletion', `Deleted checklist with ID: ${id}`);
         fetchChecklists(); // Refresh the table
-    } else {
-        // addAuditLog('Checklist Deletion', `Failed to delete checklist with ID: ${id}`, 'error');
     }
 }
 
@@ -136,11 +114,9 @@ async function addHousekeepingReport(data) {
     });
     if (response) {
         document.getElementById('housekeepingMessage').textContent = 'Housekeeping report submitted successfully.';
-        // addAuditLog('Housekeeping Report', `Submitted report for room ${data.room}`);
         fetchHousekeepingReports(); // Refresh the table
     } else {
         document.getElementById('housekeepingMessage').textContent = 'Failed to submit report.';
-        // addAuditLog('Housekeeping Report', `Failed to submit report for room ${data.room}`, 'error');
     }
 }
 
@@ -150,10 +126,7 @@ async function deleteHousekeepingReport(id) {
         method: 'DELETE'
     });
     if (response) {
-        // addAuditLog('Housekeeping Report Deletion', `Deleted report with ID: ${id}`);
         fetchHousekeepingReports(); // Refresh the table
-    } else {
-        // addAuditLog('Housekeeping Report Deletion', `Failed to delete report with ID: ${id}`, 'error');
     }
 }
 
@@ -175,11 +148,9 @@ async function addInventoryItem(data) {
     });
     if (response) {
         document.getElementById('inventoryMessage').textContent = `Item '${data.item}' added successfully.`;
-        // addAuditLog('Inventory Addition', `Added new item: ${data.item} with quantity ${data.quantity}`);
         fetchInventoryItems(); // Refresh the table
     } else {
         document.getElementById('inventoryMessage').textContent = 'Failed to add item.';
-        // addAuditLog('Inventory Addition', `Failed to add item: ${data.item}`, 'error');
     }
 }
 
@@ -189,10 +160,7 @@ async function deleteInventoryItem(id) {
         method: 'DELETE'
     });
     if (response) {
-        // addAuditLog('Inventory Deletion', `Deleted inventory item with ID: ${id}`);
         fetchInventoryItems(); // Refresh the table
-    } else {
-        // addAuditLog('Inventory Deletion', `Failed to delete inventory item with ID: ${id}`, 'error');
     }
 }
 
@@ -388,51 +356,43 @@ document.getElementById('loginForm').addEventListener('submit', async function(e
         document.getElementById('mainApp').classList.remove('hidden');
         await fetchChecklists(); // Load initial data
         loginMessage.textContent = '';
-        // addAuditLog('User Login', `User '${username}' logged in successfully.`);
+        addAuditLog('User Login', `User '${username}' logged in successfully.`);
     } else {
         loginMessage.textContent = 'Please enter a valid username and password.';
-        // addAuditLog('User Login', `Login attempt failed for user '${username}'.`, 'error');
+        addAuditLog('User Login', `Login attempt failed for user '${username}'.`, 'error');
     }
 });
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
-    // addAuditLog('User Logout', `User logged out.`);
+    addAuditLog('User Logout', `User logged out.`);
     currentUser = null;
     document.getElementById('mainApp').classList.add('hidden');
     document.getElementById('loginSection').classList.remove('hidden');
 });
 
 // Tab switching logic
-function switchTab(tabId) {
+function switchTab(tabId, fetchDataFunc) {
     const sections = ['roomChecklistSection', 'housekeepingReportSection', 'inventorySection', 'auditLogSection'];
     const tabs = ['tabChecklist', 'tabHousekeeping', 'tabInventory', 'tabAuditLog'];
 
     sections.forEach(id => {
-        const section = document.getElementById(id);
-        if (section) section.classList.add('hidden');
+        document.getElementById(id).classList.add('hidden');
     });
     tabs.forEach(id => {
-        const tab = document.getElementById(id);
-        if (tab) tab.classList.remove('tab-active');
+        document.getElementById(id).classList.remove('tab-active');
     });
 
-    const activeTabElement = document.getElementById(`tab${tabId.replace('Section', '')}`);
-    if (activeTabElement) activeTabElement.classList.add('tab-active');
-    const activeSectionElement = document.getElementById(tabId);
-    if (activeSectionElement) activeSectionElement.classList.remove('hidden');
-    
+    document.getElementById(tabId).classList.remove('hidden');
+    document.getElementById(`tab${tabId.replace('Section', '')}`).classList.add('tab-active');
+
     // Fetch data for the new tab
-    if (tabId === 'roomChecklistSection') fetchChecklists();
-    if (tabId === 'housekeepingReportSection') fetchHousekeepingReports();
-    if (tabId === 'inventorySection') fetchInventoryItems();
-    if (tabId === 'auditLogSection') fetchAuditLogs();
+    fetchDataFunc();
 }
 
-document.getElementById('tabChecklist').addEventListener('click', () => switchTab('roomChecklistSection'));
-document.getElementById('tabHousekeeping').addEventListener('click', () => switchTab('housekeepingReportSection'));
-document.getElementById('tabInventory').addEventListener('click', () => switchTab('inventorySection'));
-document.getElementById('tabAuditLog').addEventListener('click', () => switchTab('auditLogSection'));
-
+document.getElementById('tabChecklist').addEventListener('click', () => switchTab('roomChecklistSection', fetchChecklists));
+document.getElementById('tabHousekeeping').addEventListener('click', () => switchTab('housekeepingReportSection', fetchHousekeepingReports));
+document.getElementById('tabInventory').addEventListener('click', () => switchTab('inventorySection', fetchInventoryItems));
+document.getElementById('tabAuditLog').addEventListener('click', () => switchTab('auditLogSection', fetchAuditLogs));
 
 // Form submission handlers
 document.getElementById('checklistForm').addEventListener('submit', function(e) {
