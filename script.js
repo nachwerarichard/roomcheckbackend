@@ -717,6 +717,7 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
     const item = document.getElementById('inventoryItem').value;
     const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
     const action = document.getElementById('inventoryAction').value;
+    const lowstocklevel = document.getElementById('lowStockLevel').value;
 
     if (!item || isNaN(quantity) || quantity <= 0) {
         displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
