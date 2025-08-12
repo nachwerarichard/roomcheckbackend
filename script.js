@@ -779,37 +779,49 @@ async function loadInventory() {
 /**
  * Renders the inventory table with filtered data.
  */
-function renderInventoryTable() {
+/**
+ * Renders the inventory table with the provided data.
+ * @param {Array} inventoryData - The array of inventory items to display.
+ * @param {boolean} isSnapshot - A flag to determine if the table is a historical snapshot.
+ */
+function renderInventoryTable(inventoryData, isSnapshot = false) {
     const tbody = document.getElementById('inventoryBody');
+    const thead = document.getElementById('inventoryTable').querySelector('thead');
     const search = document.getElementById('inventorySearch').value.toLowerCase();
 
-    const filteredInventory = allInventory.filter(item =>
+    // Show/hide the "Actions" column based on whether it's a snapshot
+    if (isSnapshot) {
+        thead.querySelector('th:last-child').style.display = 'none';
+    } else {
+        thead.querySelector('th:last-child').style.display = '';
+    }
+
+    const filteredInventory = inventoryData.filter(item =>
         item.item.toLowerCase().includes(search)
     );
 
     tbody.innerHTML = '';
     if (filteredInventory.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>';
+        tbody.innerHTML = `<tr><td colspan="${isSnapshot ? 3 : 4}" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>`;
     } else {
         filteredInventory.forEach(item => {
-            // ...
-const tr = document.createElement('tr');
-if (item.quantity <= item.lowStockLevel) {
-    tr.classList.add('low-stock-warning');
-}
-// ...
-            
-            // Correctly apply the class to the row.
-            // This ensures other classes on the row are not overwritten.
-            
+            const tr = document.createElement('tr');
+            if (item.quantity <= item.lowStockLevel) {
+                tr.classList.add('low-stock-warning');
+            }
+
+            // The innerHTML is now a template string to handle the conditional actions column.
+            let actionsHtml = isSnapshot ? '' : `
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
+                </td>`;
+
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
                 <td class="border px-4 py-2">${item.quantity}</td>
                 <td class="border px-4 py-2">${item.lowStockLevel}</td>
-                <td class="border px-4 py-2">
-                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
-                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
-                </td>
+                ${actionsHtml}
             `;
             tbody.appendChild(tr);
         });
@@ -849,6 +861,48 @@ function editInventoryItem(id) {
     }
 }
 
+
+async function loadInventory() {
+    try {
+        const res = await fetch(`${backendURL}/inventory`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        allInventory = await res.json();
+        // Call the refactored function with the live data and set the flag to false
+        renderInventoryTable(allInventory, false);
+    } catch (err) {
+        console.error('Error loading inventory:', err);
+        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
+    }
+}
+
+/**
+ * Fetches and displays the inventory snapshot for a given date.
+ */
+async function getInventorySnapshot() {
+    const snapshotDate = document.getElementById('snapshotDate').value;
+    if (!snapshotDate) {
+        displayMessage('inventoryMessage', 'Please select a date.', true);
+        return;
+    }
+
+    try {
+        const res = await fetch(`${backendURL}/inventory/snapshot/${snapshotDate}`);
+        if (!res.ok) {
+            throw new Error('Failed to fetch inventory snapshot.');
+        }
+        const snapshotItems = await res.json();
+
+        // Call the refactored function with the snapshot data and set the flag to true
+        renderInventoryTable(snapshotItems, true);
+
+        displayMessage('inventoryMessage', `Showing inventory snapshot for ${snapshotDate}.`, false);
+    } catch (err) {
+        console.error('Error fetching snapshot:', err);
+        displayMessage('inventoryMessage', 'An error occurred while fetching the inventory snapshot.', true);
+    }
+}
 
 /**
  * Saves the edited inventory item to the backend.
