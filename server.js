@@ -57,7 +57,15 @@ const inventorySchema = new mongoose.Schema({
 
 const Inventory = mongoose.model('Inventory', inventorySchema);
 
+const transactionSchema = new mongoose.Schema({
+    item: { type: String, required: true },
+    quantity: { type: Number, required: true },
+    action: { type: String, required: true, enum: ['add', 'use'] },
+    // Use timestamps for the date of the transaction
+    timestamp: { type: Date, default: Date.now }
+});
 
+const Transaction = mongoose.model('Transaction', transactionSchema);
 // --- Admin Login ---
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
