@@ -266,24 +266,20 @@ app.delete('/status-reports/:id', async (req, res) => {
 app.get('/inventory/snapshot/:date', async (req, res) => {
     try {
         const { date } = req.params;
-        // Parse the date from the URL to use in the query
         const snapshotDate = new Date(date);
-        
-        // Ensure the date is valid
+
         if (isNaN(snapshotDate.getTime())) {
             return res.status(400).json({ message: 'Invalid date format' });
         }
-
-        // Aggregate transactions to calculate a snapshot of inventory
-        const snapshot = await Transaction.aggregate([
+        
+        // Step 1: Calculate the total quantity for each item up to the snapshot date
+        const snapshotQuantities = await Transaction.aggregate([
             {
-                // 1. Filter transactions that occurred up to the given date
                 $match: {
                     timestamp: { $lte: snapshotDate }
                 }
             },
             {
-                // 2. Group transactions by item and calculate the total quantity
                 $group: {
                     _id: '$item',
                     totalQuantity: {
@@ -298,16 +294,21 @@ app.get('/inventory/snapshot/:date', async (req, res) => {
                 }
             }
         ]);
-        
-        // Format the snapshot for a clear response
-        const formattedSnapshot = snapshot.map(item => ({
-            item: item._id,
-            quantity: item.totalQuantity,
-            // lowStockLevel is not stored per transaction, so you may need to fetch it separately
-            lowStockLevel: 0 // Placeholder, or fetch from the Inventory model
-        }));
 
-        res.status(200).json(formattedSnapshot);
+        // Step 2: Get the low stock level for each item from the main Inventory collection
+        const inventoryItems = await Inventory.find({ item: { $in: snapshotQuantities.map(s => s._id) } });
+
+        // Step 3: Combine the quantity and lowStockLevel data
+        const combinedSnapshot = snapshotQuantities.map(snapshotItem => {
+            const inventoryItem = inventoryItems.find(i => i.item === snapshotItem._id);
+            return {
+                item: snapshotItem._id,
+                quantity: snapshotItem.totalQuantity,
+                lowStockLevel: inventoryItem ? inventoryItem.lowStockLevel : 0 // Use the value from Inventory or default to 0
+            };
+        });
+
+        res.status(200).json(combinedSnapshot);
 
     } catch (err) {
         console.error('❌ Error fetching inventory snapshot:', err);
