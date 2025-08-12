@@ -972,6 +972,63 @@ function exportInventoryToExcel() {
 // Event listener for inventory search
 document.getElementById('inventorySearch').addEventListener('input', renderInventoryTable);
 
+async function loadInventory() {
+    try {
+        const res = await fetch(`${backendURL}/inventory`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        allInventory = await res.json();
+        // SOLUTION: Pass the allInventory array and 'false' for the isSnapshot flag
+        renderInventoryTable(allInventory, false);
+    } catch (err) {
+        console.error('Error loading inventory:', err);
+        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
+    }
+}
+function renderInventoryTable(inventoryData, isSnapshot = false) {
+    const tbody = document.getElementById('inventoryBody');
+    const actionsHeader = document.getElementById('actionsHeader');
+    const search = document.getElementById('inventorySearch').value.toLowerCase();
+
+    // SOLUTION: Conditionally show/hide the header and cells
+    if (isSnapshot) {
+        actionsHeader.classList.add('hidden');
+    } else {
+        actionsHeader.classList.remove('hidden');
+    }
+
+    const filteredInventory = inventoryData.filter(item =>
+        item.item.toLowerCase().includes(search)
+    );
+
+    tbody.innerHTML = '';
+    if (filteredInventory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${isSnapshot ? 3 : 4}" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>`;
+    } else {
+        filteredInventory.forEach(item => {
+            const tr = document.createElement('tr');
+            if (item.quantity <= item.lowStockLevel) {
+                tr.classList.add('low-stock-warning');
+            }
+
+            const actionsHtml = isSnapshot ? '' : `
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
+                </td>`;
+
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${item.item}</td>
+                <td class="border px-4 py-2">${item.quantity}</td>
+                <td class="border px-4 py-2">${item.lowStockLevel}</td>
+                ${actionsHtml}
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
 
 // --- Initial Load ---
 // Ensures that the main application content is hidden until login is successful.
