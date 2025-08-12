@@ -262,6 +262,58 @@ app.delete('/status-reports/:id', async (req, res) => {
 });
 
 
+// This is your new backend route for fetching an inventory snapshot
+app.get('/inventory/snapshot/:date', async (req, res) => {
+    try {
+        const { date } = req.params;
+        // Parse the date from the URL to use in the query
+        const snapshotDate = new Date(date);
+        
+        // Ensure the date is valid
+        if (isNaN(snapshotDate.getTime())) {
+            return res.status(400).json({ message: 'Invalid date format' });
+        }
+
+        // Aggregate transactions to calculate a snapshot of inventory
+        const snapshot = await Transaction.aggregate([
+            {
+                // 1. Filter transactions that occurred up to the given date
+                $match: {
+                    timestamp: { $lte: snapshotDate }
+                }
+            },
+            {
+                // 2. Group transactions by item and calculate the total quantity
+                $group: {
+                    _id: '$item',
+                    totalQuantity: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$action', 'add'] },
+                                '$quantity',
+                                { $multiply: ['$quantity', -1] }
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+        
+        // Format the snapshot for a clear response
+        const formattedSnapshot = snapshot.map(item => ({
+            item: item._id,
+            quantity: item.totalQuantity,
+            // lowStockLevel is not stored per transaction, so you may need to fetch it separately
+            lowStockLevel: 0 // Placeholder, or fetch from the Inventory model
+        }));
+
+        res.status(200).json(formattedSnapshot);
+
+    } catch (err) {
+        console.error('❌ Error fetching inventory snapshot:', err);
+        res.status(500).json({ message: 'Server error while fetching snapshot' });
+    }
+});
 // --- 🆕 UPDATED: API Endpoints for Inventory Management ---
 
 // Add or Use Inventory (Create/Update logic combined)
