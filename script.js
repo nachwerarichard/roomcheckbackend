@@ -784,53 +784,107 @@ async function loadInventory() {
  * @param {Array} inventoryData - The array of inventory items to display.
  * @param {boolean} isSnapshot - A flag to determine if the table is a historical snapshot.
  */
-function renderInventoryTable(inventoryData, isSnapshot = false) {
-    const tbody = document.getElementById('inventoryBody');
-    const thead = document.getElementById('inventoryTable').querySelector('thead');
-    const search = document.getElementById('inventorySearch').value.toLowerCase();
+// --- Inventory Management Functionality ---
 
-    // Show/hide the "Actions" column based on whether it's a snapshot
-    if (isSnapshot) {
-        thead.querySelector('th:last-child').style.display = 'none';
-    } else {
-        thead.querySelector('th:last-child').style.display = '';
-    }
+// Event listener for inventory form submission
+document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-    const filteredInventory = inventoryData.filter(item =>
-        item.item.toLowerCase().includes(search)
-    );
+    const item = document.getElementById('inventoryItem').value;
+    const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
+    const action = document.getElementById('inventoryAction').value;
+    const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
 
-    tbody.innerHTML = '';
-    if (filteredInventory.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${isSnapshot ? 3 : 4}" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>`;
-    } else {
-        filteredInventory.forEach(item => {
-            const tr = document.createElement('tr');
-            if (item.quantity <= item.lowStockLevel) {
-                tr.classList.add('low-stock-warning');
-            }
+    if (!item || isNaN(quantity) || quantity <= 0) {
+        displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
+        return;
+    }
 
-            // The innerHTML is now a template string to handle the conditional actions column.
-            let actionsHtml = isSnapshot ? '' : `
-                <td class="border px-4 py-2">
-                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
-                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
-                </td>`;
+    try {
+        const res = await fetch(`${backendURL}/inventory`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ item, quantity, action, lowStockLevel })
+        });
+        const result = await res.json();
+        let msg = result.message || 'Inventory updated successfully.';
+        if (result.lowStockEmailSent) {
+            msg += ' Low stock email sent.';
+        }
+        displayMessage('inventoryMessage', msg);
+        e.target.reset();
+        loadInventory();
+    } catch (err) {
+        console.error('Error updating inventory:', err);
+        displayMessage('inventoryMessage', 'An error occurred while updating the inventory.', true);
+    }
+});
 
-            tr.innerHTML = `
-                <td class="border px-4 py-2">${item.item}</td>
-                <td class="border px-4 py-2">${item.quantity}</td>
-                <td class="border px-4 py-2">${item.lowStockLevel}</td>
-                ${actionsHtml}
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+// Use this ONE version of loadInventory
+async function loadInventory() {
+    try {
+        const res = await fetch(`${backendURL}/inventory`);
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
+        allInventory = await res.json();
+        // Pass the live data and set isSnapshot to false
+        renderInventoryTable(allInventory, false);
+    } catch (err) {
+        console.error('Error loading inventory:', err);
+        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
+    }
 }
-/**
- * Populates the inventory form for editing an item.
- * @param {string} id - The ID of the inventory item to edit.
- */
+
+
+// Use this ONE version of renderInventoryTable
+function renderInventoryTable(inventoryData, isSnapshot = false) {
+    const tbody = document.getElementById('inventoryBody');
+    const actionsHeader = document.getElementById('actionsHeader');
+    const search = document.getElementById('inventorySearch').value.toLowerCase();
+
+    // Check if actionsHeader exists before trying to access its classList
+    if (actionsHeader) {
+        if (isSnapshot) {
+            actionsHeader.classList.add('hidden');
+        } else {
+            actionsHeader.classList.remove('hidden');
+        }
+    }
+
+    const filteredInventory = inventoryData.filter(item =>
+        item.item.toLowerCase().includes(search)
+    );
+
+    tbody.innerHTML = '';
+    if (filteredInventory.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${isSnapshot ? 3 : 4}" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>`;
+    } else {
+        filteredInventory.forEach(item => {
+            const tr = document.createElement('tr');
+            if (item.quantity <= item.lowStockLevel) {
+                tr.classList.add('low-stock-warning');
+            }
+
+            const actionsHtml = isSnapshot ? '' : `
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
+                </td>`;
+
+            tr.innerHTML = `
+                <td class="border px-4 py-2">${item.item}</td>
+                <td class="border px-4 py-2">${item.quantity}</td>
+                <td class="border px-4 py-2">${item.lowStockLevel}</td>
+                ${actionsHtml}
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+}
+
+
+// The rest of your code follows...
 function editInventoryItem(id) {
     const itemToEdit = allInventory.find(item => item._id === id);
     if (!itemToEdit) {
