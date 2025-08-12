@@ -258,8 +258,10 @@ app.delete('/status-reports/:id', async (req, res) => {
 
 // Add or Use Inventory (Create/Update logic combined)
 app.post('/inventory', async (req, res) => {
+    // Destructure all expected fields, including lowStockLevel
     const { item, quantity, action, lowStockLevel } = req.body;
     
+    // Validate required fields. lowStockLevel is not required for an 'add' action
     if (!item || !quantity || !action) {
         return res.status(400).json({ message: 'Missing required fields' });
     }
@@ -269,7 +271,7 @@ app.post('/inventory', async (req, res) => {
         let lowStockEmailSent = false;
         
         if (inventoryItem) {
-            // Item exists, update quantity
+            // ⭐ Item exists: update quantity AND lowStockLevel ⭐
             if (action === 'add') {
                 inventoryItem.quantity += quantity;
             } else if (action === 'use') {
@@ -278,16 +280,31 @@ app.post('/inventory', async (req, res) => {
                 }
                 inventoryItem.quantity -= quantity;
             }
+            
+            // Check if a new lowStockLevel was provided and update it
+            if (lowStockLevel !== undefined && lowStockLevel !== null) {
+                inventoryItem.lowStockLevel = lowStockLevel;
+            }
+            
             await inventoryItem.save();
             lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
             return res.status(200).json({ message: 'Inventory updated successfully', lowStockEmailSent });
+
         } else if (action === 'add') {
-            // Item does not exist, create a new one only if action is 'add'
-            // Use provided lowStockLevel or default to 10
-            inventoryItem = new Inventory({ item, quantity, lowStockLevel }); 
+            // ⭐ Item does not exist: create a new one with the provided lowStockLevel ⭐
+            // Use provided lowStockLevel or a default value (e.g., 10) if none is given
+            const newLowStockLevel = lowStockLevel !== undefined && lowStockLevel !== null ? Number(lowStockLevel) : 10;
+            
+            inventoryItem = new Inventory({ 
+                item, 
+                quantity, 
+                lowStockLevel: newLowStockLevel 
+            });
+            
             await inventoryItem.save();
             lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
             return res.status(201).json({ message: 'New inventory item added', lowStockEmailSent });
+
         } else {
             // Cannot 'use' an item that doesn't exist
             return res.status(404).json({ message: 'Item not found in inventory' });
@@ -298,7 +315,6 @@ app.post('/inventory', async (req, res) => {
         res.status(500).json({ message: 'Server error while updating inventory' });
     }
 });
-
 // Get all inventory items
 app.get('/inventory', async (req, res) => {
     try {
