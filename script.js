@@ -732,8 +732,8 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
     const item = document.getElementById('inventoryItem').value;
     const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
     const action = document.getElementById('inventoryAction').value;
-    // Parse the lowStockLevel input into an integer
-    const lowstocklevel = parseInt(document.getElementById('lowStockLevel').value, 10); 
+    // Parse const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
+     const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
 
     if (!item || isNaN(quantity) || quantity <= 0) {
         displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
@@ -744,7 +744,7 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
         const res = await fetch(`${backendURL}/inventory`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity, action, lowstocklevel })
+            body: JSON.stringify({ item, quantity, action, lowStockLevel })
         });
         const result = await res.json();
         let msg = result.message || 'Inventory updated successfully.';
