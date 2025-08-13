@@ -1,27 +1,26 @@
-// script.js
-const backendURL = 'https://roomcheckbackend-grf6.onrender.com'; // Ensure this is correct
+const backendURL = 'https://roomcheckbackend-grf6.onrender.com';
 let allChecklists = [];
 let currentPage = 1;
 const rowsPerPage = 5;
 let allStatusReports = [];
 let filteredStatusReports = [];
-let allInventory = []; // New array to hold all inventory items
+let allInventory = [];
+
+// --- Global variables for user authentication ---
+let currentUserRole = null; // Stores the role of the logged-in user
 
 // --- Tab Management ---
 const tabChecklistBtn = document.getElementById('tabChecklist');
 const tabHousekeepingBtn = document.getElementById('tabHousekeeping');
-const tabInventoryBtn = document.getElementById('tabInventory'); // New tab button
+const tabInventoryBtn = document.getElementById('tabInventory');
 const roomChecklistSection = document.getElementById('roomChecklistSection');
 const housekeepingReportSection = document.getElementById('housekeepingReportSection');
-const inventorySection = document.getElementById('inventorySection'); // New section
+const inventorySection = document.getElementById('inventorySection');
 
-/**
- * Shows the selected tab and hides the others.
- * Also triggers data loading for the active tab.
- * @param {string} tabName - 'checklist', 'housekeeping', or 'inventory'
- */
-// Function to handle the logout process
-
+// New elements to hide/show based on user role
+const adminOnlyElements = document.querySelectorAll('.admin-only');
+const storeManagerOnlyElements = document.querySelectorAll('.store-manager-only');
+const housekeeperOnlyElements = document.querySelectorAll('.housekeeper-only');
 
 function showTab(tabName) {
     // Hide all sections first
@@ -38,38 +37,34 @@ function showTab(tabName) {
     tabInventoryBtn.classList.add('bg-gray-200', 'text-gray-700');
 
     // Show the selected section and add active class to button
-    if (tabName === 'checklist') {
+    if (tabName === 'checklist' && (currentUserRole === 'admin' || currentUserRole === 'housekeeper')) {
         roomChecklistSection.classList.remove('hidden');
         tabChecklistBtn.classList.add('bg-blue-600', 'text-white');
         tabChecklistBtn.classList.remove('bg-gray-200', 'text-gray-700');
-        loadChecklists(); // Reload data when tab is shown
-    } else if (tabName === 'housekeeping') {
+        loadChecklists();
+    } else if (tabName === 'housekeeping' && (currentUserRole === 'admin' || currentUserRole === 'storemanager')) {
         housekeepingReportSection.classList.remove('hidden');
         tabHousekeepingBtn.classList.add('bg-blue-600', 'text-white');
         tabHousekeepingBtn.classList.remove('bg-gray-200', 'text-gray-700');
-        loadStatusReports(); // Reload data when tab is shown
-    } else if (tabName === 'inventory') {
+        loadStatusReports();
+    } else if (tabName === 'inventory' && (currentUserRole === 'admin' || currentUserRole === 'storemanager')) {
         inventorySection.classList.remove('hidden');
         tabInventoryBtn.classList.add('bg-blue-600', 'text-white');
         tabInventoryBtn.classList.remove('bg-gray-200', 'text-gray-700');
-        loadInventory(); // Load inventory data when tab is shown
+        loadInventory();
+    } else {
+        // Handle cases where the user tries to access a tab they don't have permission for
+        displayMessage('mainAppMessage', 'You do not have permission to view this section.', true);
     }
 }
 
-// Event listeners for tab buttons
 tabChecklistBtn.addEventListener('click', () => showTab('checklist'));
 tabHousekeepingBtn.addEventListener('click', () => showTab('housekeeping'));
-tabInventoryBtn.addEventListener('click', () => showTab('inventory')); // New event listener
+tabInventoryBtn.addEventListener('click', () => showTab('inventory'));
 
-// --- Utility function for displaying messages (replaces alert) ---
-/**
- * Displays a message in a specified HTML element.
- * @param {string} elementId - The ID of the HTML element to display the message in.
- * @param {string} msg - The message to display.
- * @param {boolean} [isError=false] - True if the message is an error, false otherwise.
- */
 function displayMessage(elementId, msg, isError = false) {
     const element = document.getElementById(elementId);
+    if (!element) return;
     element.textContent = msg;
     element.classList.remove('text-green-600', 'text-red-600');
     if (isError) {
@@ -79,7 +74,7 @@ function displayMessage(elementId, msg, isError = false) {
     }
     setTimeout(() => {
         element.textContent = '';
-    }, 5000); // Clear message after 5 seconds
+    }, 5000);
 }
 
 // --- Login Function ---
@@ -96,9 +91,22 @@ async function login() {
         });
 
         if (res.ok) {
+            const result = await res.json();
+            currentUserRole = result.role; // Store the role in the global variable
+            localStorage.setItem('userRole', currentUserRole); // Save the role to local storage
+
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
-            showTab('checklist'); // Show the checklist tab by default after login
+
+            // Now, show/hide UI elements based on the role
+            updateUIVisibility(currentUserRole);
+
+            // Determine the first tab to show based on the user's role
+            if (currentUserRole === 'admin' || currentUserRole === 'housekeeper') {
+                showTab('checklist');
+            } else if (currentUserRole === 'storemanager') {
+                showTab('housekeeping'); // Or a default tab for store managers
+            }
         } else {
             displayMessage('loginMsg', 'Invalid username or password.', true);
         }
@@ -107,40 +115,69 @@ async function login() {
         displayMessage('loginMsg', 'Server error during login.', true);
     }
 }
+
+// --- New function to handle front-end access control ---
+function updateUIVisibility(role) {
+    // Hide all role-specific elements first
+    adminOnlyElements.forEach(el => el.classList.add('hidden'));
+    storeManagerOnlyElements.forEach(el => el.classList.add('hidden'));
+    housekeeperOnlyElements.forEach(el => el.classList.add('hidden'));
+
+    // Show elements based on the current user's role
+    switch (role) {
+        case 'admin':
+            document.querySelectorAll('.admin-only, .store-manager-only, .housekeeper-only').forEach(el => el.classList.remove('hidden'));
+            break;
+        case 'storemanager':
+            document.querySelectorAll('.store-manager-only').forEach(el => el.classList.remove('hidden'));
+            // Hide admin-only tabs
+            tabChecklistBtn.classList.add('hidden');
+            tabHousekeepingBtn.classList.remove('hidden');
+            tabInventoryBtn.classList.remove('hidden');
+            break;
+        case 'housekeeper':
+            document.querySelectorAll('.housekeeper-only').forEach(el => el.classList.remove('hidden'));
+            // Hide storemanager-only tabs
+            tabChecklistBtn.classList.remove('hidden');
+            tabHousekeepingBtn.classList.add('hidden');
+            tabInventoryBtn.classList.add('hidden');
+            break;
+    }
+}
+
 function logout() {
-    // Hide the main application dashboard
-    document.getElementById('mainApp').classList.add('hidden');
-    // Show the login section
+    // Clear user role from local storage and memory
+    localStorage.removeItem('userRole');
+    currentUserRole = null;
+
+    document.getElementById('mainApp').style.display = 'none';
     document.getElementById('loginSection').style.display = 'block';
-    // Optional: Clear any stored data, like user session or local storage
-    localStorage.clear();
-    // Optional: Reset the login form
+
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
     document.getElementById('loginMsg').textContent = '';
+
+    // Hide all tabs and sections when logging out
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.add('hidden'));
+    document.getElementById('roomChecklistSection').classList.add('hidden');
+    document.getElementById('housekeepingReportSection').classList.add('hidden');
+    document.getElementById('inventorySection').classList.add('hidden');
 }
 
-// --- Room Checklist Functionality ---
 
-/**
- * Exports the data from the checklist table (Room, Date, Items) to an Excel file.
- */
+// --- Room Checklist Functionality ---
 function exportToExcel() {
     const dataToExport = allChecklists.map(entry => ({
         'Room': entry.room,
         'Date': entry.date,
         'Items': Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')
     }));
-
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Checklist Data");
     XLSX.writeFile(wb, "Hotel_Room_Checklist.xlsx");
 }
 
-/**
- * Prints the data from the checklist table (Room, Date, Items) in a new window.
- */
 function printChecklists() {
     const printWindow = window.open('', '_blank');
     printWindow.document.write('<html><head><title>Room Checklist</title>');
@@ -156,7 +193,6 @@ function printChecklists() {
     printWindow.document.write('<table>');
     printWindow.document.write('<thead><tr><th>Room</th><th>Date</th><th>Items</th></tr></thead>');
     printWindow.document.write('<tbody>');
-
     allChecklists.forEach(entry => {
         printWindow.document.write('<tr>');
         printWindow.document.write(`<td>${entry.room}</td>`);
@@ -164,131 +200,129 @@ function printChecklists() {
         printWindow.document.write(`<td>${Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')}</td>`);
         printWindow.document.write('</tr>');
     });
-
     printWindow.document.write('</tbody></table>');
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.print();
 }
 
-// Event listener for checklist form submission
 document.getElementById('checklistForm').addEventListener('submit', async function (e) {
     e.preventDefault();
-
     const room = document.getElementById('room').value;
     const date = document.getElementById('date').value;
-
     if (!room || !date) {
         displayMessage('message', 'Please select a room and date.', true);
         return;
     }
-
     const formData = new FormData(e.target);
     const items = Object.fromEntries(formData.entries());
-    delete items.room; // Remove room from the 'items' object as it's a separate field
-    delete items.date; // Remove date from the 'items' object as it's a separate field
+    delete items.room;
+    delete items.date;
 
-    const data = {
-        room,
-        date,
-        items
-    };
-
+    const data = { room, date, items };
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/submit-checklist`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-role': currentUserRole
+            },
             body: JSON.stringify(data)
         });
-
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
-
         let msg = result.message || 'Checklist submitted.';
         if (result.emailSent) {
             msg += ' Email sent for missing items.';
         }
         displayMessage('message', msg);
-
-        e.target.reset(); // Reset the form after successful submission
-        loadChecklists(); // Reload checklists to show the new entry
+        e.target.reset();
+        loadChecklists();
     } catch (err) {
         console.error('Error submitting checklist:', err);
         displayMessage('message', 'An error occurred while submitting the checklist.', true);
     }
 });
 
-/**
- * Fetches all checklists from the backend and updates the `allChecklists` array.
- */
 async function loadChecklists() {
     try {
-        const res = await fetch(`${backendURL}/checklists`);
+        // CHANGE: Add the user role header to the request
+        const res = await fetch(`${backendURL}/checklists`, {
+            headers: {
+                'x-user-role': currentUserRole
+            }
+        });
         if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
         }
         allChecklists = await res.json();
         renderChecklistTable();
-        renderMissingItemsSummary(); // Call to render missing items summary
+        renderMissingItemsSummary();
     } catch (err) {
         console.error('Error loading checklists:', err);
         displayMessage('message', 'Failed to load checklists.', true);
     }
 }
 
-/**
- * Renders the checklist table with filtered and paginated data.
- */
 function renderChecklistTable() {
     const tbody = document.getElementById('checklistBody');
     const search = document.getElementById('searchInput').value.toLowerCase();
-
-    // Filter data based on search input
     const filtered = allChecklists.filter(entry =>
         entry.room.toLowerCase().includes(search) ||
         entry.date.toLowerCase().includes(search) ||
-        JSON.stringify(entry.items).toLowerCase().includes(search) // Search in items too
+        JSON.stringify(entry.items).toLowerCase().includes(search)
     );
-
-    // Apply pagination
     const start = (currentPage - 1) * rowsPerPage;
     const paginated = filtered.slice(start, start + rowsPerPage);
-
-    tbody.innerHTML = ''; // Clear existing rows
+    tbody.innerHTML = '';
     if (paginated.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No checklists found.</td></tr>';
     } else {
         paginated.forEach(entry => {
             const tr = document.createElement('tr');
+            const actionsHtml = (currentUserRole === 'admin') ? `
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editChecklist(${JSON.stringify(entry)})'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteChecklist("${entry._id}")'>Delete</button>
+                </td>` : '';
             tr.innerHTML = `
                 <td class="border px-4 py-2">${entry.room}</td>
                 <td class="border px-4 py-2">${entry.date}</td>
                 <td class="border px-4 py-2">${Object.entries(entry.items).map(([k,v]) => `${k.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}: ${v.replace(/\b\w/g, l => l.toUpperCase())}`).join(', ')}</td>
-                <td class="border px-4 py-2">
-                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editChecklist(${JSON.stringify(entry)})'>Edit</button>
-                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteChecklist("${entry._id}")'>Delete</button>
-                </td>
+                ${actionsHtml}
             `;
             tbody.appendChild(tr);
         });
     }
-
-    // Update pagination info and button states
     const totalPages = Math.ceil(filtered.length / rowsPerPage);
     document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages || 1}`;
     document.getElementById('prevBtn').disabled = currentPage === 1;
     document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    // Hide the 'Actions' header if the user isn't an admin
+    const actionsHeader = document.getElementById('checklistActionsHeader');
+    if (actionsHeader) {
+        if (currentUserRole !== 'admin') {
+            actionsHeader.classList.add('hidden');
+        } else {
+            actionsHeader.classList.remove('hidden');
+        }
+    }
 }
 
-/**
- * Populates the edit form for a selected checklist entry.
- * @param {object} entry - The checklist entry object to edit.
- */
 function editChecklist(entry) {
+    // Only allow admins to edit
+    if (currentUserRole !== 'admin') {
+        displayMessage('message', 'You do not have permission to edit checklists.', true);
+        return;
+    }
     const tbody = document.getElementById('checklistBody');
     const existingRow = Array.from(tbody.children).find(row => {
-        return row.querySelector('button[onclick*="deleteChecklist"]').onclick.toString().includes(`"${entry._id}"`);
+        const deleteButton = row.querySelector('button[onclick*="deleteChecklist"]');
+        return deleteButton && deleteButton.onclick.toString().includes(`"${entry._id}"`);
     });
-
     const itemsHtml = Object.keys(entry.items).map(key => `
         <div class="flex items-center justify-between py-1">
             <span class="font-medium">${key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}:</span>
@@ -298,7 +332,6 @@ function editChecklist(entry) {
             </select>
         </div>
     `).join('');
-
     const editRowHtml = `
         <tr class="bg-blue-50">
             <td class="border px-4 py-2"><input type="text" id="editRoom-${entry._id}" value="${entry.room}" class="w-full px-2 py-1 border rounded-md" /></td>
@@ -314,7 +347,6 @@ function editChecklist(entry) {
             </td>
         </tr>
     `;
-
     if (existingRow) {
         existingRow.outerHTML = editRowHtml;
     } else {
@@ -322,28 +354,32 @@ function editChecklist(entry) {
     }
 }
 
-/**
- * Saves the edited checklist entry to the backend.
- * @param {string} id - The ID of the checklist entry to save.
- */
 async function saveChecklist(id) {
+    if (currentUserRole !== 'admin') {
+        displayMessage('message', 'You do not have permission to save changes.', true);
+        return;
+    }
     const room = document.getElementById(`editRoom-${id}`).value;
     const date = document.getElementById(`editDate-${id}`).value;
-
     const itemElements = document.querySelectorAll(`[id^="item-"][id$="-${id}"]`);
     const items = {};
     itemElements.forEach(el => {
         const key = el.id.replace(`item-`, '').replace(`-${id}`, '');
         items[key] = el.value;
     });
-
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/checklists/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-role': currentUserRole
+            },
             body: JSON.stringify({ room, date, items })
         });
-
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         displayMessage('message', result.message || 'Checklist updated successfully!');
         await loadChecklists();
@@ -353,18 +389,24 @@ async function saveChecklist(id) {
     }
 }
 
-/**
- * Deletes a checklist entry from the backend.
- * @param {string} id - The ID of the checklist entry to delete.
- */
 async function deleteChecklist(id) {
-    if (!window.confirm("Are you sure you want to delete this checklist?")) return; // Replace with custom modal
+    if (currentUserRole !== 'admin') {
+        displayMessage('message', 'You do not have permission to delete checklists.', true);
+        return;
+    }
+    if (!window.confirm("Are you sure you want to delete this checklist?")) return;
 
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/checklists/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'x-user-role': currentUserRole
+            }
         });
-
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         displayMessage('message', result.message || 'Checklist deleted successfully!');
         await loadChecklists();
@@ -374,7 +416,6 @@ async function deleteChecklist(id) {
     }
 }
 
-// Event listeners for checklist search and pagination
 document.getElementById('searchInput').addEventListener('input', () => {
     currentPage = 1;
     renderChecklistTable();
@@ -400,12 +441,10 @@ document.getElementById('nextBtn').addEventListener('click', () => {
 });
 
 // --- Missing Items Summary Functionality ---
-/**
- * Renders a summary of missing items and the rooms they are missing from for a given date.
- */
 function renderMissingItemsSummary() {
+    // Only show the summary if the user is an admin or store manager
     const summaryContainer = document.getElementById('missingItemsSummary');
-    if (!summaryContainer) return; // Exit if the container doesn't exist (e.g., before login)
+    if (!summaryContainer || (currentUserRole !== 'admin' && currentUserRole !== 'storemanager')) return;
 
     const filterDateInput = document.getElementById('missingItemsDateFilter').value;
     let checklistsForSummary = allChecklists;
@@ -421,8 +460,8 @@ function renderMissingItemsSummary() {
         });
     }
 
-    const missingItemsCount = {}; // { item: count }
-    const missingItemsRooms = {}; // { item: [room1, room2] }
+    const missingItemsCount = {};
+    const missingItemsRooms = {};
 
     checklistsForSummary.forEach(entry => {
         for (const itemKey in entry.items) {
@@ -447,41 +486,48 @@ function renderMissingItemsSummary() {
         }
         summaryHtml += '</ul>';
     }
-
     summaryContainer.innerHTML = summaryHtml;
 }
 
-// Event listeners for missing items date filter
 document.addEventListener('DOMContentLoaded', () => {
-    const missingItemsDateFilter = document.getElementById('missingItemsDateFilter');
-    if (missingItemsDateFilter) {
-        missingItemsDateFilter.addEventListener('change', renderMissingItemsSummary);
-    }
-    const clearMissingItemsDateFilterBtn = document.getElementById('clearMissingItemsDateFilter');
-    if (clearMissingItemsDateFilterBtn) {
-        clearMissingItemsDateFilterBtn.addEventListener('click', () => {
-            missingItemsDateFilter.value = '';
-            renderMissingItemsSummary();
-        });
+    // Check local storage for a previously saved role
+    currentUserRole = localStorage.getItem('userRole');
+    if (currentUserRole) {
+        // If a role is found, automatically show the main app and update the UI
+        document.getElementById('loginSection').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        updateUIVisibility(currentUserRole);
+        // Load data for the default tab based on the role
+        if (currentUserRole === 'admin' || currentUserRole === 'housekeeper') {
+             showTab('checklist');
+        } else if (currentUserRole === 'storemanager') {
+             showTab('housekeeping');
+        }
+    } else {
+        // No role found, show the login page
+        document.getElementById('mainApp').style.display = 'none';
     }
 });
 
 
 // --- Housekeeping Report Functionality ---
-
-// Event listener for status report form submission
 document.getElementById('statusReportForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
-
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/submit-status-report`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-role': currentUserRole
+            },
             body: JSON.stringify(data)
         });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         displayMessage('statusMessage', result.message || 'Status report submitted.');
         e.target.reset();
@@ -492,17 +538,19 @@ document.getElementById('statusReportForm').addEventListener('submit', async fun
     }
 });
 
-/**
- * Fetches all status reports from the backend and updates the `allStatusReports` array.
- */
 async function loadStatusReports() {
     try {
-        const res = await fetch(`${backendURL}/status-reports`);
+        // CHANGE: Add the user role header to the request
+        const res = await fetch(`${backendURL}/status-reports`, {
+            headers: {
+                'x-user-role': currentUserRole
+            }
+        });
         if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
         }
         allStatusReports = await res.json();
-        filteredStatusReports = [...allStatusReports]; // Initialize filtered data with all data
+        filteredStatusReports = [...allStatusReports];
         renderStatusReportTable();
     } catch (err) {
         console.error('Error loading status reports:', err);
@@ -510,89 +558,79 @@ async function loadStatusReports() {
     }
 }
 
-/**
- * Renders the status report table with filtered data.
- */
 function renderStatusReportTable() {
     const tbody = document.getElementById('statusReportBody');
     tbody.innerHTML = '';
+    const actionsHeader = document.getElementById('statusActionsHeader');
+    if (actionsHeader) {
+        if (currentUserRole !== 'admin') {
+            actionsHeader.classList.add('hidden');
+        } else {
+            actionsHeader.classList.remove('hidden');
+        }
+    }
     if (filteredStatusReports.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No housekeeping reports found.</td></tr>';
     } else {
         filteredStatusReports.forEach(report => {
             const tr = document.createElement('tr');
+            const actionsHtml = (currentUserRole === 'admin') ? `
+                <td class="border px-4 py-2">
+                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editStatusReport("${report._id}")'>Edit</button>
+                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteStatusReport("${report._id}")'>Delete</button>
+                </td>` : '';
             tr.innerHTML = `
                 <td class="border px-4 py-2">${report.room}</td>
                 <td class="border px-4 py-2">${report.category}</td>
                 <td class="border px-4 py-2">${report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}</td>
                 <td class="border px-4 py-2">${report.remarks}</td>
                 <td class="border px-4 py-2">${new Date(report.dateTime).toLocaleString()}</td>
-                <td class="border px-4 py-2">
-                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editStatusReport("${report._id}")'>Edit</button>
-                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteStatusReport("${report._id}")'>Delete</button>
-                </td>
+                ${actionsHtml}
             `;
             tbody.appendChild(tr);
         });
     }
 }
 
-/**
- * Filters the `allStatusReports` by the selected date and updates `filteredStatusReports`.
- */
 function filterStatusReportsByDate() {
     const filterDateInput = document.getElementById('filterDate').value;
     if (filterDateInput) {
         const selectedDate = new Date(filterDateInput);
-        // Normalize selectedDate to start of day for accurate comparison
         selectedDate.setHours(0, 0, 0, 0);
-
         filteredStatusReports = allStatusReports.filter(report => {
             const reportDate = new Date(report.dateTime);
-            reportDate.setHours(0, 0, 0, 0); // Normalize report date to start of day
+            reportDate.setHours(0, 0, 0, 0);
             return reportDate.getTime() === selectedDate.getTime();
         });
     } else {
-        filteredStatusReports = [...allStatusReports]; // If no date selected, show all
+        filteredStatusReports = [...allStatusReports];
     }
     renderStatusReportTable();
 }
 
-/**
- * Clears the date filter and resets `filteredStatusReports` to all reports.
- */
 function clearStatusDateFilter() {
-    document.getElementById('filterDate').value = ''; // Clear the input field
-    filteredStatusReports = [...allStatusReports]; // Reset to all reports
+    document.getElementById('filterDate').value = '';
+    filteredStatusReports = [...allStatusReports];
     renderStatusReportTable();
 }
 
-/**
- * Exports the current `filteredStatusReports` (specific columns) to an Excel file.
- */
 function exportStatusReportsToExcel() {
-    // Prepare data with only the desired columns
     const dataToExport = filteredStatusReports.map(report => ({
         'Room': report.room,
         'Category': report.category,
-        'Status': report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()), // Format status for readability
+        'Status': report.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
         'Remarks': report.remarks,
         'Date & Time': new Date(report.dateTime).toLocaleString()
     }));
-
-    const ws = XLSX.utils.json_to_sheet(dataToExport); // Use json_to_sheet for structured data
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Housekeeping Reports");
     XLSX.writeFile(wb, "Hotel_Housekeeping_Reports.xlsx");
 }
 
-/**
- * Prints the current `filteredStatusReports` (specific columns) in a new window.
- */
 function printStatusReports() {
     const printWindow = window.open('', '_blank');
     printWindow.document.write('<html><head><title>Housekeeping Report</title>');
-    // Add basic styling for print
     printWindow.document.write('<style>');
     printWindow.document.write('body { font-family: sans-serif; margin: 20px; }');
     printWindow.document.write('h1 { text-align: center; margin-bottom: 20px; }');
@@ -605,7 +643,6 @@ function printStatusReports() {
     printWindow.document.write('<table>');
     printWindow.document.write('<thead><tr><th>Room</th><th>Category</th><th>Status</th><th>Remarks</th><th>Date & Time</th></tr></thead>');
     printWindow.document.write('<tbody>');
-
     filteredStatusReports.forEach(report => {
         printWindow.document.write('<tr>');
         printWindow.document.write(`<td>${report.room}</td>`);
@@ -615,29 +652,27 @@ function printStatusReports() {
         printWindow.document.write(`<td>${new Date(report.dateTime).toLocaleString()}</td>`);
         printWindow.document.write('</tr>');
     });
-
     printWindow.document.write('</tbody></table>');
     printWindow.document.write('</body></html>');
     printWindow.document.close();
     printWindow.print();
 }
 
-/**
- * Populates the edit form for a selected status report entry.
- * @param {string} id - The ID of the status report entry to edit.
- */
 function editStatusReport(id) {
+    if (currentUserRole !== 'admin') {
+        displayMessage('statusMessage', 'You do not have permission to edit reports.', true);
+        return;
+    }
     const reportToEdit = allStatusReports.find(report => report._id === id);
     if (!reportToEdit) {
         console.error('Report not found for editing:', id);
         return;
     }
-
     const tbody = document.getElementById('statusReportBody');
     const rowToReplace = Array.from(tbody.children).find(row => {
-        return row.querySelector('button[onclick*="deleteStatusReport"]').onclick.toString().includes(`"${id}"`);
+        const deleteButton = row.querySelector('button[onclick*="deleteStatusReport"]');
+        return deleteButton && deleteButton.onclick.toString().includes(`"${id}"`);
     });
-
     const editRowHtml = `
         <tr class="bg-blue-50">
             <td class="border px-4 py-2"><input type="text" id="editReportRoom-${id}" value="${reportToEdit.room}" class="w-full px-2 py-1 border rounded-md" /></td>
@@ -674,25 +709,30 @@ function editStatusReport(id) {
     }
 }
 
-/**
- * Saves the edited status report entry to the backend.
- * @param {string} id - The ID of the status report entry to save.
- */
 async function saveStatusReport(id) {
+    if (currentUserRole !== 'admin') {
+        displayMessage('statusMessage', 'You do not have permission to save reports.', true);
+        return;
+    }
     const room = document.getElementById(`editReportRoom-${id}`).value;
     const category = document.getElementById(`editReportCategory-${id}`).value;
     const status = document.getElementById(`editReportStatus-${id}`).value;
     const remarks = document.getElementById(`editReportRemarks-${id}`).value;
     const dateTime = document.getElementById(`editReportDateTime-${id}`).value;
-
     const updatedData = { room, category, status, remarks, dateTime };
-
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/status-reports/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-role': currentUserRole
+            },
             body: JSON.stringify(updatedData)
         });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         displayMessage('statusMessage', result.message || 'Report updated successfully!');
         loadStatusReports();
@@ -702,17 +742,23 @@ async function saveStatusReport(id) {
     }
 }
 
-/**
- * Deletes a status report entry from the backend.
- * @param {string} id - The ID of the status report entry to delete.
- */
 async function deleteStatusReport(id) {
-    if (!window.confirm("Are you sure you want to delete this status report?")) return; // Replace with custom modal
-
+    if (currentUserRole !== 'admin') {
+        displayMessage('statusMessage', 'You do not have permission to delete reports.', true);
+        return;
+    }
+    if (!window.confirm("Are you sure you want to delete this status report?")) return;
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/status-reports/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'x-user-role': currentUserRole
+            }
         });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         displayMessage('statusMessage', result.message || 'Report deleted successfully!');
         loadStatusReports();
@@ -724,28 +770,29 @@ async function deleteStatusReport(id) {
 
 
 // --- Inventory Management Functionality ---
-
-// Event listener for inventory form submission
 document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-
     const item = document.getElementById('inventoryItem').value;
     const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
     const action = document.getElementById('inventoryAction').value;
-    // Parse const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
-     const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
-
+    const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
     if (!item || isNaN(quantity) || quantity <= 0) {
         displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
         return;
     }
-
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/inventory`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-role': currentUserRole
+            },
             body: JSON.stringify({ item, quantity, action, lowStockLevel })
         });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         let msg = result.message || 'Inventory updated successfully.';
         if (result.lowStockEmailSent) {
@@ -759,99 +806,39 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
         displayMessage('inventoryMessage', 'An error occurred while updating the inventory.', true);
     }
 });
-/**
- * Fetches all inventory items from the backend and updates the `allInventory` array.
- */
+
 async function loadInventory() {
     try {
-        const res = await fetch(`${backendURL}/inventory`);
+        // CHANGE: Add the user role header to the request
+        const res = await fetch(`${backendURL}/inventory`, {
+            headers: {
+                'x-user-role': currentUserRole
+            }
+        });
         if (!res.ok) {
             throw new Error(`HTTP error! status: ${res.status}`);
         }
         allInventory = await res.json();
-        renderInventoryTable();
+        renderInventoryTable(allInventory, false);
     } catch (err) {
         console.error('Error loading inventory:', err);
         displayMessage('inventoryMessage', 'Failed to load inventory.', true);
     }
 }
 
-/**
- * Renders the inventory table with filtered data.
- */
-/**
- * Renders the inventory table with the provided data.
- * @param {Array} inventoryData - The array of inventory items to display.
- * @param {boolean} isSnapshot - A flag to determine if the table is a historical snapshot.
- */
-// --- Inventory Management Functionality ---
-
-// Event listener for inventory form submission
-document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const item = document.getElementById('inventoryItem').value;
-    const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
-    const action = document.getElementById('inventoryAction').value;
-    const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
-
-    if (!item || isNaN(quantity) || quantity <= 0) {
-        displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
-        return;
-    }
-
-    try {
-        const res = await fetch(`${backendURL}/inventory`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity, action, lowStockLevel })
-        });
-        const result = await res.json();
-        let msg = result.message || 'Inventory updated successfully.';
-        if (result.lowStockEmailSent) {
-            msg += ' Low stock email sent.';
-        }
-        displayMessage('inventoryMessage', msg);
-        e.target.reset();
-        loadInventory();
-    } catch (err) {
-        console.error('Error updating inventory:', err);
-        displayMessage('inventoryMessage', 'An error occurred while updating the inventory.', true);
-    }
-});
-
-// Use this ONE version of loadInventory
-async function loadInventory() {
-    try {
-        const res = await fetch(`${backendURL}/inventory`);
-        if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        allInventory = await res.json();
-        // Pass the live data and set isSnapshot to false
-        renderInventoryTable(allInventory, false);
-    } catch (err) {
-        console.error('Error loading inventory:', err);
-        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
-    }
-}
-
-
-// Use this ONE version of renderInventoryTable
 function renderInventoryTable(inventoryData, isSnapshot = false) {
     const tbody = document.getElementById('inventoryBody');
     const actionsHeader = document.getElementById('actionsHeader');
     const search = document.getElementById('inventorySearch').value.toLowerCase();
-
-    // Check if actionsHeader exists before trying to access its classList
+    
     if (actionsHeader) {
-        if (isSnapshot) {
+        if (currentUserRole !== 'admin') {
             actionsHeader.classList.add('hidden');
         } else {
             actionsHeader.classList.remove('hidden');
         }
     }
-
+    
     const filteredInventory = inventoryData.filter(item =>
         item.item.toLowerCase().includes(search)
     );
@@ -865,26 +852,29 @@ function renderInventoryTable(inventoryData, isSnapshot = false) {
             if (item.quantity <= item.lowStockLevel) {
                 tr.classList.add('low-stock-warning');
             }
-
-            const actionsHtml = isSnapshot ? '' : `
+            
+            const actionsHtml = (currentUserRole === 'admin') ? `
                 <td class="border px-4 py-2">
                     <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
                     <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
-                </td>`;
-
+                </td>` : '';
+            
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
                 <td class="border px-4 py-2">${item.quantity}</td>
                 <td class="border px-4 py-2">${item.lowStockLevel}</td>
                 ${actionsHtml}
             `;
-            
             tbody.appendChild(tr);
         });
     }
 }
-// The rest of your code follows...
+
 function editInventoryItem(id) {
+    if (currentUserRole !== 'admin') {
+        displayMessage('inventoryMessage', 'You do not have permission to edit inventory.', true);
+        return;
+    }
     const itemToEdit = allInventory.find(item => item._id === id);
     if (!itemToEdit) {
         console.error('Item not found for editing:', id);
@@ -892,9 +882,9 @@ function editInventoryItem(id) {
     }
     const tbody = document.getElementById('inventoryBody');
     const rowToReplace = Array.from(tbody.children).find(row => {
-        return row.querySelector('button[onclick*="deleteInventoryItem"]').onclick.toString().includes(`"${id}"`);
+        const deleteButton = row.querySelector('button[onclick*="deleteInventoryItem"]');
+        return deleteButton && deleteButton.onclick.toString().includes(`"${id}"`);
     });
-
     const editRowHtml = `
         <tr class="bg-blue-50">
             <td class="border px-4 py-2"><input type="text" id="editItem-${id}" value="${itemToEdit.item}" class="w-full px-2 py-1 border rounded-md" /></td>
@@ -906,7 +896,6 @@ function editInventoryItem(id) {
             </td>
         </tr>
     `;
-
     if (rowToReplace) {
         rowToReplace.outerHTML = editRowHtml;
     } else {
@@ -914,69 +903,31 @@ function editInventoryItem(id) {
     }
 }
 
-
-async function loadInventory() {
-    try {
-        const res = await fetch(`${backendURL}/inventory`);
-        if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        allInventory = await res.json();
-        // Call the refactored function with the live data and set the flag to false
-        renderInventoryTable(allInventory, false);
-    } catch (err) {
-        console.error('Error loading inventory:', err);
-        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
-    }
-}
-
-/**
- * Fetches and displays the inventory snapshot for a given date.
- */
-async function getInventorySnapshot() {
-    const snapshotDate = document.getElementById('snapshotDate').value;
-    if (!snapshotDate) {
-        displayMessage('inventoryMessage', 'Please select a date.', true);
+async function saveInventoryItem(id) {
+    if (currentUserRole !== 'admin') {
+        displayMessage('inventoryMessage', 'You do not have permission to save inventory.', true);
         return;
     }
-
-    try {
-        const res = await fetch(`${backendURL}/inventory/snapshot/${snapshotDate}`);
-        if (!res.ok) {
-            throw new Error('Failed to fetch inventory snapshot.');
-        }
-        const snapshotItems = await res.json();
-
-        // Call the refactored function with the snapshot data and set the flag to true
-        renderInventoryTable(snapshotItems, true);
-
-        displayMessage('inventoryMessage', `Showing inventory snapshot for ${snapshotDate}.`, false);
-    } catch (err) {
-        console.error('Error fetching snapshot:', err);
-        displayMessage('inventoryMessage', 'An error occurred while fetching the inventory snapshot.', true);
-    }
-}
-
-/**
- * Saves the edited inventory item to the backend.
- * @param {string} id - The ID of the inventory item to save.
- */
-async function saveInventoryItem(id) {
     const item = document.getElementById(`editItem-${id}`).value;
     const quantity = parseInt(document.getElementById(`editQuantity-${id}`).value);
     const lowStockLevel = parseInt(document.getElementById(`editLowstocklevel-${id}`).value);
-
     if (!item || isNaN(quantity)) {
         displayMessage('inventoryMessage', 'Please enter a valid item and quantity.', true);
         return;
     }
-    
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/inventory/${id}`, {
             method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity,lowStockLevel })
+            headers: {
+                'Content-Type': 'application/json',
+                'x-user-role': currentUserRole
+            },
+            body: JSON.stringify({ item, quantity, lowStockLevel })
         });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         displayMessage('inventoryMessage', result.message || 'Inventory item updated successfully!');
         loadInventory();
@@ -986,18 +937,23 @@ async function saveInventoryItem(id) {
     }
 }
 
-
-/**
- * Deletes an inventory item from the backend.
- * @param {string} id - The ID of the inventory item to delete.
- */
 async function deleteInventoryItem(id) {
+    if (currentUserRole !== 'admin') {
+        displayMessage('inventoryMessage', 'You do not have permission to delete inventory.', true);
+        return;
+    }
     if (!window.confirm("Are you sure you want to delete this inventory item?")) return;
-
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/inventory/${id}`, {
-            method: 'DELETE'
+            method: 'DELETE',
+            headers: {
+                'x-user-role': currentUserRole
+            }
         });
+        if (!res.ok) {
+            throw new Error(`HTTP error! status: ${res.status}`);
+        }
         const result = await res.json();
         displayMessage('inventoryMessage', result.message || 'Inventory item deleted successfully!');
         loadInventory();
@@ -1007,84 +963,16 @@ async function deleteInventoryItem(id) {
     }
 }
 
-/**
- * Exports the inventory table to an Excel file.
- */
 function exportInventoryToExcel() {
     const dataToExport = allInventory.map(item => ({
         'Item Name': item.item,
-        'Stock Level': item.quantity
+        'Stock Level': item.quantity,
+        'Low Stock Level': item.lowStockLevel
     }));
-
     const ws = XLSX.utils.json_to_sheet(dataToExport);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Inventory Data");
     XLSX.writeFile(wb, "Hotel_Inventory.xlsx");
 }
 
-// Event listener for inventory search
-document.getElementById('inventorySearch').addEventListener('input', renderInventoryTable);
-
-async function loadInventory() {
-    try {
-        const res = await fetch(`${backendURL}/inventory`);
-        if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        allInventory = await res.json();
-        // SOLUTION: Pass the allInventory array and 'false' for the isSnapshot flag
-        renderInventoryTable(allInventory, false);
-    } catch (err) {
-        console.error('Error loading inventory:', err);
-        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
-    }
-}
-function renderInventoryTable(inventoryData, isSnapshot = false) {
-    const tbody = document.getElementById('inventoryBody');
-    const actionsHeader = document.getElementById('actionsHeader');
-    const search = document.getElementById('inventorySearch').value.toLowerCase();
-
-    // SOLUTION: Conditionally show/hide the header and cells
-    if (isSnapshot) {
-        actionsHeader.classList.add('hidden');
-    } else {
-        actionsHeader.classList.remove('hidden');
-    }
-
-    const filteredInventory = inventoryData.filter(item =>
-        item.item.toLowerCase().includes(search)
-    );
-
-    tbody.innerHTML = '';
-    if (filteredInventory.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${isSnapshot ? 3 : 4}" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>`;
-    } else {
-        filteredInventory.forEach(item => {
-            const tr = document.createElement('tr');
-            if (item.quantity <= item.lowStockLevel) {
-                tr.classList.add('low-stock-warning');
-            }
-
-            const actionsHtml = isSnapshot ? '' : `
-                <td class="border px-4 py-2">
-                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
-                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
-                </td>`;
-
-            tr.innerHTML = `
-                <td class="border px-4 py-2">${item.item}</td>
-                <td class="border px-4 py-2">${item.quantity}</td>
-                <td class="border px-4 py-2">${item.lowStockLevel}</td>
-                ${actionsHtml}
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-}
-
-
-// --- Initial Load ---
-// Ensures that the main application content is hidden until login is successful.
-document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('mainApp').style.display = 'none';
-});
+document.getElementById('inventorySearch').addEventListener('input', () => renderInventoryTable(allInventory, false));
