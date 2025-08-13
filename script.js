@@ -380,8 +380,7 @@ function renderChecklistTable() {
 }
 
 function editChecklist(id) {
-  if (currentUserRole !== 'admin') {
-    showMessage('message', 'You do not have permission to edit checklists.', true);
+if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper'){    showMessage('message', 'You do not have permission to edit checklists.', true);
     return;
   }
   const entry = allChecklists.find((c) => c._id === id);
@@ -423,7 +422,7 @@ function editChecklist(id) {
 }
 
 async function saveChecklist(id) {
-  if (currentUserRole !== 'admin') {
+  if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper') {
     showMessage('message', 'You do not have permission to save changes.', true);
     return;
   }
@@ -456,7 +455,7 @@ async function saveChecklist(id) {
 }
 
 async function deleteChecklist(id) {
-  if (currentUserRole !== 'admin') {
+  if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper'){
     showMessage('message', 'You do not have permission to delete checklists.', true);
     return;
   }
@@ -502,7 +501,7 @@ document.getElementById('nextBtn')?.addEventListener('click', () => {
 function renderMissingItemsSummary() {
   const summaryContainer = document.getElementById('missingItemsSummary');
   if (!summaryContainer) return;
-  if (!(hasRole('admin') || hasRole('storemanager'))) {
+  if (!(hasRole('admin') || hasRole('housekeeper'))) {
     summaryContainer.innerHTML = '';
     return;
   }
@@ -688,7 +687,7 @@ function printStatusReports() {
 }
 
 function editStatusReport(id) {
-  if (currentUserRole !== 'admin') {
+ if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper') {
     showMessage('statusMessage', 'You do not have permission to edit reports.', true);
     return;
   }
@@ -763,7 +762,7 @@ async function saveStatusReport(id) {
 }
 
 async function deleteStatusReport(id) {
-  if (currentUserRole !== 'admin') {
+  if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper') {
     showMessage('statusMessage', 'You do not have permission to delete reports.', true);
     return;
   }
