@@ -105,7 +105,7 @@ async function login() {
             if (currentUserRole === 'admin' || currentUserRole === 'housekeeper') {
                 showTab('checklist');
             } else if (currentUserRole === 'storemanager') {
-                showTab('housekeeping'); // Or a default tab for store managers
+                showTab('inventory'); // Or a default tab for store managers
             }
         } else {
             displayMessage('loginMsg', 'Invalid username or password.', true);
