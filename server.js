@@ -263,57 +263,61 @@ app.delete('/status-reports/:id', async (req, res) => {
 
 
 // This is your new backend route for fetching an inventory snapshot
+// This is your new backend route for fetching an inventory snapshot
 app.get('/inventory/snapshot/:date', async (req, res) => {
-    try {
-        const { date } = req.params;
-        const snapshotDate = new Date(date);
+    try {
+        const { date } = req.params;
+        const startOfDay = new Date(date);
 
-        if (isNaN(snapshotDate.getTime())) {
-            return res.status(400).json({ message: 'Invalid date format' });
-        }
-        
-        // Step 1: Calculate the total quantity for each item up to the snapshot date
-        const snapshotQuantities = await Transaction.aggregate([
-            {
-                $match: {
-                    timestamp: { $lte: snapshotDate }
-                }
-            },
-            {
-                $group: {
-                    _id: '$item',
-                    totalQuantity: {
-                        $sum: {
-                            $cond: [
-                                { $eq: ['$action', 'add'] },
-                                '$quantity',
-                                { $multiply: ['$quantity', -1] }
-                            ]
-                        }
-                    }
-                }
-            }
-        ]);
+        if (isNaN(startOfDay.getTime())) {
+            return res.status(400).json({ message: 'Invalid date format' });
+        }
 
-        // Step 2: Get the low stock level for each item from the main Inventory collection
-        const inventoryItems = await Inventory.find({ item: { $in: snapshotQuantities.map(s => s._id) } });
+        // ⭐ FIX: Set the snapshot date to the end of the day in UTC ⭐
+        const endOfDay = new Date(startOfDay);
+        endOfDay.setUTCHours(23, 59, 59, 999);
+        
+        // Step 1: Calculate the total quantity for each item up to the snapshot date
+        const snapshotQuantities = await Transaction.aggregate([
+            {
+                $match: {
+                    timestamp: { $lte: endOfDay } // Use endOfDay for the filter
+                }
+            },
+            {
+                $group: {
+                    _id: '$item',
+                    totalQuantity: {
+                        $sum: {
+                            $cond: [
+                                { $eq: ['$action', 'add'] },
+                                '$quantity',
+                                { $multiply: ['$quantity', -1] }
+                            ]
+                        }
+                    }
+                }
+            }
+        ]);
+        // ... (rest of the code is unchanged)
+        const inventoryItems = await Inventory.find({ item: { $in: snapshotQuantities.map(s => s._id) } });
 
-        // Step 3: Combine the quantity and lowStockLevel data
-        const combinedSnapshot = snapshotQuantities.map(snapshotItem => {
-            const inventoryItem = inventoryItems.find(i => i.item === snapshotItem._id);
-            return {
-                item: snapshotItem._id,
-                quantity: snapshotItem.totalQuantity,
-                lowStockLevel: inventoryItem ? inventoryItem.lowStockLevel : 0 // Use the value from Inventory or default to 0
-            };
-        });
+        // Step 3: Combine the quantity and lowStockLevel data
+        const combinedSnapshot = snapshotQuantities.map(snapshotItem => {
+            const inventoryItem = inventoryItems.find(i => i.item === snapshotItem._id);
+            return {
+                item: snapshotItem._id,
+                quantity: snapshotItem.totalQuantity,
+                lowStockLevel: inventoryItem ? inventoryItem.lowStockLevel : 0 // Use the value from Inventory or default to 0
+            };
+        });
 
-        res.status(200).json(combinedSnapshot);
+        res.status(200).json(combinedSnapshot);
 
-    } catch (err) {
-        console.error('❌ Error fetching inventory snapshot:', err);
-        res.status(500).json({ message: 'Server error while fetching snapshot' });
-    }
+    } catch (err) {
+        console.error('❌ Error fetching inventory snapshot:', err);
+        res.status(500).json({ message: 'Server error while fetching snapshot' });
+    }
 });
 // --- 🆕 UPDATED: API Endpoints for Inventory Management ---
 
