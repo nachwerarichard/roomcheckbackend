@@ -132,7 +132,7 @@ function updateUIVisibility(role) {
             document.querySelectorAll('.store-manager-only').forEach(el => el.classList.remove('hidden'));
             // Hide admin-only tabs
             tabChecklistBtn.classList.add('hidden');
-            tabHousekeepingBtn.classList.remove('hidden');
+            tabHousekeepingBtn.classList.add('hidden');
             tabInventoryBtn.classList.remove('hidden');
             break;
         case 'housekeeper':
