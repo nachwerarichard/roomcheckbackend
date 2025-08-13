@@ -85,6 +85,33 @@ const transactionSchema = new mongoose.Schema({
 });
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
+// --- Initial User Creation (For Development Only) ---
+// This block should be removed in production environments.
+async function createInitialUsers() {
+  const initialUsers = [
+    { username: 'admin', password: 'password123', role: 'admin' },
+    { username: 'housekeeper', password: 'password123', role: 'housekeeper' },
+    { username: 'store_manager', password: 'password123', role: 'store_manager' }
+  ];
+
+  for (const userData of initialUsers) {
+    try {
+      const existingUser = await User.findOne({ username: userData.username });
+      if (!existingUser) {
+        const newUser = new User(userData);
+        await newUser.save();
+        console.log(`✅ User ${userData.username} created with role ${userData.role}`);
+      } else {
+        console.log(`ℹ️ User ${userData.username} already exists.`);
+      }
+    } catch (err) {
+      console.error(`❌ Error creating user ${userData.username}:`, err);
+    }
+  }
+}
+
+createInitialUsers();
+
 // --- Middleware ---
 
 app.use(express.json());
