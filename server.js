@@ -5,8 +5,8 @@ const cors = require('cors');
 const nodemailer = require('nodemailer');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs'); // For hashing passwords
-const session = require('express-session'); // 🆕 NEW: For session management
-const MongoStore = require('connect-mongo'); // 🆕 NEW: To store sessions in MongoDB
+const session = require('express-session'); // For session management
+const MongoStore = require('connect-mongo'); // To store sessions in MongoDB
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -18,30 +18,6 @@ mongoose.connect(process.env.MONGO_URI)
     console.error('❌ MongoDB error:', err);
     process.exit(1);
   });
-
-
-// 🆕 NEW: Code to create default users if they don't exist
-// This is for initial setup and should be removed or commented out in production.
-(async () => {
-  try {
-    const count = await mongoose.connection.collection('users').countDocuments();
-    if (count === 0) {
-      console.log('👤 No users found. Creating default users...');
-      const defaultUsers = [
-        { username: 'admin', password: 'adminpassword123', role: 'admin' },
-        { username: 'housekeeper', password: 'clean123', role: 'housekeeper' },
-        { username: 'store_manager', password: 'stock456', role: 'store_manager' }
-      ];
-      await mongoose.connection.collection('users').insertMany(defaultUsers);
-      console.log('✅ Default users created successfully.');
-    } else {
-      console.log(`👤 ${count} users already exist. Skipping default user creation.`);
-    }
-  } catch (err) {
-    console.error('❌ Failed to create default users:', err);
-  }
-})();
-
 
 // --- Mongoose Schemas and Models ---
 
@@ -114,12 +90,12 @@ const Transaction = mongoose.model('Transaction', transactionSchema);
 app.use(express.json());
 const corsOptions = {
   origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
-  credentials: true, // 🆕 NEW: Required to allow cookies/sessions
+  credentials: true, // Required to allow cookies/sessions
   optionsSuccessStatus: 200
 };
 app.use(cors(corsOptions));
 
-// 🆕 NEW: Session Middleware Configuration
+// Session Middleware Configuration
 app.use(session({
   // ⚠️ WARNING: Hard-coding the secret key is a major security risk.
   // This should be loaded from a secure environment variable.
@@ -161,7 +137,17 @@ async function createAuditLog(action, model, req, details = {}) {
   }
 }
 
-// --- 🆕 UPDATED: Login Route with Session Management ---
+// --- Email Transporter Setup (Placeholder) ---
+// You will need to uncomment and configure this section with your email credentials
+// const transporter = nodemailer.createTransport({
+//   service: 'gmail',
+//   auth: {
+//     user: process.env.EMAIL_USER,
+//     pass: process.env.EMAIL_PASS,
+//   },
+// });
+
+// --- Login & Authentication Routes ---
 app.post('/login', async (req, res) => {
   const { username, password } = req.body;
   try {
@@ -186,7 +172,6 @@ app.post('/login', async (req, res) => {
   }
 });
 
-// 🆕 NEW: Logout Route
 app.post('/logout', (req, res) => {
   if (req.session.user) {
     req.session.destroy(err => {
@@ -201,7 +186,7 @@ app.post('/logout', (req, res) => {
   }
 });
 
-// --- 🆕 UPDATED: Middleware for Authorization ---
+// Middleware for Authorization
 function checkRole(roles) {
   return (req, res, next) => {
     if (!req.session.user || !roles.includes(req.session.user.role)) {
@@ -233,12 +218,12 @@ app.post('/submit-checklist', checkRole(['admin', 'housekeeper']), async (req, r
         <p>Please address this immediately.</p>`;
 
       try {
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: process.env.EMAIL_USER,
-          subject: `Urgent: Missing Items in Room ${room} on ${date}`,
-          html,
-        });
+        // await transporter.sendMail({
+        //   from: process.env.EMAIL_USER,
+        //   to: process.env.EMAIL_USER,
+        //   subject: `Urgent: Missing Items in Room ${room} on ${date}`,
+        //   html,
+        // });
         console.log('📧 Email sent for missing items.');
         emailSent = true;
       } catch (emailErr) {
@@ -401,7 +386,7 @@ app.post('/inventory', checkRole(['admin', 'store_manager']), async (req, res) =
     await newTransaction.save();
 
     await createAuditLog(logAction, 'Inventory', req, { itemId: inventoryItem._id, quantity, action, newQuantity: inventoryItem.quantity });
-    lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
+    // lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
     return res.status(200).json({ message: 'Inventory updated successfully', lowStockEmailSent });
   } catch (err) {
     console.error('❌ Error updating inventory:', err);
@@ -428,7 +413,7 @@ app.put('/inventory/:id', checkRole(['admin', 'store_manager']), async (req, res
       return res.status(404).json({ message: 'Inventory item not found' });
     }
     await createAuditLog('update_inventory_item', 'Inventory', req, { itemId: updated._id, updates: req.body });
-    await sendLowStockEmail(updated.item, updated.quantity, updated.lowStockLevel);
+    // await sendLowStockEmail(updated.item, updated.quantity, updated.lowStockLevel);
     res.status(200).json({ message: 'Inventory item updated successfully', updated });
   } catch (err) {
     console.error('❌ Error updating inventory item:', err);
@@ -481,6 +466,7 @@ app.get('/inventory/snapshot/:date', checkRole(['admin', 'store_manager']), asyn
             }
           }
         }
+      }
     ]);
 
     const inventoryItems = await Inventory.find({ item: { $in: snapshotQuantities.map(s => s._id) } });
@@ -534,6 +520,3 @@ app.get('/audit-logs', checkRole(['admin']), async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
-
-// 🆕 You must install the following npm packages:
-// npm install express-session connect-mongo bcryptjs
