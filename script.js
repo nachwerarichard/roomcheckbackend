@@ -42,7 +42,7 @@ function showTab(tabName) {
         tabChecklistBtn.classList.add('bg-blue-600', 'text-white');
         tabChecklistBtn.classList.remove('bg-gray-200', 'text-gray-700');
         loadChecklists();
-    } else if (tabName === 'housekeeping' && (currentUserRole === 'admin' || currentUserRole === 'storemanager')) {
+    } else if (tabName === 'housekeeping' && (currentUserRole === 'admin' || currentUserRole === 'housekeeper')) {
         housekeepingReportSection.classList.remove('hidden');
         tabHousekeepingBtn.classList.add('bg-blue-600', 'text-white');
         tabHousekeepingBtn.classList.remove('bg-gray-200', 'text-gray-700');
