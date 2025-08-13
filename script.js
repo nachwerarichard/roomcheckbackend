@@ -7,7 +7,7 @@ let filteredStatusReports = [];
 let allInventory = [];
 
 // --- Global variables for user authentication ---
-let currentUserRole = null;
+let currentUserRole = null; // Stores the role of the logged-in user
 
 // --- Tab Management ---
 const tabChecklistBtn = document.getElementById('tabChecklist');
@@ -16,80 +16,19 @@ const tabInventoryBtn = document.getElementById('tabInventory');
 const roomChecklistSection = document.getElementById('roomChecklistSection');
 const housekeepingReportSection = document.getElementById('housekeepingReportSection');
 const inventorySection = document.getElementById('inventorySection');
-const logoutBtn = document.getElementById('logoutBtn');
 
-// Define specific elements for role-based visibility
-const checklistForm = document.getElementById('checklistForm');
-const checklistExportBtn = document.getElementById('exportToExcel');
-const checklistPrintBtn = document.getElementById('printChecklists');
-const checklistActionsHeader = document.getElementById('checklistActionsHeader');
-
-const statusReportForm = document.getElementById('statusReportForm');
-const statusExportBtn = document.getElementById('exportStatusReports');
-const statusPrintBtn = document.getElementById('printStatusReports');
-const statusActionsHeader = document.getElementById('statusActionsHeader');
-
-const inventoryForm = document.getElementById('inventoryForm');
-const inventoryExportBtn = document.getElementById('exportInventoryToExcel');
-const inventorySnapshotSection = document.getElementById('inventorySnapshotSection');
-const inventoryActionsHeader = document.getElementById('inventoryActionsHeader');
-
-// Function to show/hide UI elements based on user's role
-function updateUIVisibility(role) {
-    // Hide all tabs and sections initially
-    tabChecklistBtn.classList.add('hidden');
-    tabHousekeepingBtn.classList.add('hidden');
-    tabInventoryBtn.classList.add('hidden');
-    
-    // Hide all forms and buttons initially
-    checklistForm.classList.add('hidden');
-    checklistExportBtn.classList.add('hidden');
-    checklistPrintBtn.classList.add('hidden');
-    statusReportForm.classList.add('hidden');
-    statusExportBtn.classList.add('hidden');
-    statusPrintBtn.classList.add('hidden');
-    inventoryForm.classList.add('hidden');
-    inventoryExportBtn.classList.add('hidden');
-    inventorySnapshotSection.classList.add('hidden');
-
-    switch (role) {
-        case 'admin':
-            // Admin can see everything
-            tabChecklistBtn.classList.remove('hidden');
-            tabHousekeepingBtn.classList.remove('hidden');
-            tabInventoryBtn.classList.remove('hidden');
-            checklistForm.classList.remove('hidden');
-            checklistExportBtn.classList.remove('hidden');
-            checklistPrintBtn.classList.remove('hidden');
-            statusReportForm.classList.remove('hidden');
-            statusExportBtn.classList.remove('hidden');
-            statusPrintBtn.classList.remove('hidden');
-            inventoryForm.classList.remove('hidden');
-            inventoryExportBtn.classList.remove('hidden');
-            inventorySnapshotSection.classList.remove('hidden');
-            break;
-        case 'housekeeper':
-            // Housekeeper can only access checklist and status report viewing
-            tabChecklistBtn.classList.remove('hidden');
-            tabHousekeepingBtn.classList.remove('hidden');
-            checklistForm.classList.remove('hidden'); // Housekeeper can submit checklists
-            checklistPrintBtn.classList.remove('hidden');
-            break;
-        case 'storemanager':
-            // Store Manager can only access inventory
-            tabInventoryBtn.classList.remove('hidden');
-            inventoryForm.classList.remove('hidden'); // Store manager can update inventory
-            inventoryExportBtn.classList.remove('hidden');
-            inventorySnapshotSection.classList.remove('hidden');
-            break;
-    }
-}
+// New elements to hide/show based on user role
+const adminOnlyElements = document.querySelectorAll('.admin-only');
+const storeManagerOnlyElements = document.querySelectorAll('.store-manager-only');
+const housekeeperOnlyElements = document.querySelectorAll('.housekeeper-only');
 
 function showTab(tabName) {
+    // Hide all sections first
     roomChecklistSection.classList.add('hidden');
     housekeepingReportSection.classList.add('hidden');
     inventorySection.classList.add('hidden');
 
+    // Remove active class from all buttons
     tabChecklistBtn.classList.remove('bg-blue-600', 'text-white');
     tabHousekeepingBtn.classList.remove('bg-blue-600', 'text-white');
     tabInventoryBtn.classList.remove('bg-blue-600', 'text-white');
@@ -97,42 +36,31 @@ function showTab(tabName) {
     tabHousekeepingBtn.classList.add('bg-gray-200', 'text-gray-700');
     tabInventoryBtn.classList.add('bg-gray-200', 'text-gray-700');
 
-    if (tabName === 'checklist') {
-        if (currentUserRole === 'admin' || currentUserRole === 'housekeeper') {
-            roomChecklistSection.classList.remove('hidden');
-            tabChecklistBtn.classList.add('bg-blue-600', 'text-white');
-            tabChecklistBtn.classList.remove('bg-gray-200', 'text-gray-700');
-            loadChecklists();
-        } else {
-            displayMessage('mainAppMessage', 'You do not have permission to view this section.', true);
-        }
-    } else if (tabName === 'housekeeping') {
-        if (currentUserRole === 'admin' || currentUserRole === 'housekeeper') {
-            housekeepingReportSection.classList.remove('hidden');
-            tabHousekeepingBtn.classList.add('bg-blue-600', 'text-white');
-            tabHousekeepingBtn.classList.remove('bg-gray-200', 'text-gray-700');
-            loadStatusReports();
-        } else {
-            displayMessage('mainAppMessage', 'You do not have permission to view this section.', true);
-        }
-    } else if (tabName === 'inventory') {
-        if (currentUserRole === 'admin' || currentUserRole === 'storemanager') {
-            inventorySection.classList.remove('hidden');
-            tabInventoryBtn.classList.add('bg-blue-600', 'text-white');
-            tabInventoryBtn.classList.remove('bg-gray-200', 'text-gray-700');
-            loadInventory();
-        } else {
-            displayMessage('mainAppMessage', 'You do not have permission to view this section.', true);
-        }
+    // Show the selected section and add active class to button
+    if (tabName === 'checklist' && (currentUserRole === 'admin' || currentUserRole === 'housekeeper')) {
+        roomChecklistSection.classList.remove('hidden');
+        tabChecklistBtn.classList.add('bg-blue-600', 'text-white');
+        tabChecklistBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        loadChecklists();
+    } else if (tabName === 'housekeeping' && (currentUserRole === 'admin' || currentUserRole === 'storemanager')) {
+        housekeepingReportSection.classList.remove('hidden');
+        tabHousekeepingBtn.classList.add('bg-blue-600', 'text-white');
+        tabHousekeepingBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        loadStatusReports();
+    } else if (tabName === 'inventory' && (currentUserRole === 'admin' || currentUserRole === 'storemanager')) {
+        inventorySection.classList.remove('hidden');
+        tabInventoryBtn.classList.add('bg-blue-600', 'text-white');
+        tabInventoryBtn.classList.remove('bg-gray-200', 'text-gray-700');
+        loadInventory();
+    } else {
+        // Handle cases where the user tries to access a tab they don't have permission for
+        displayMessage('mainAppMessage', 'You do not have permission to view this section.', true);
     }
 }
 
 tabChecklistBtn.addEventListener('click', () => showTab('checklist'));
 tabHousekeepingBtn.addEventListener('click', () => showTab('housekeeping'));
 tabInventoryBtn.addEventListener('click', () => showTab('inventory'));
-if (logoutBtn) {
-    logoutBtn.addEventListener('click', logout);
-}
 
 function displayMessage(elementId, msg, isError = false) {
     const element = document.getElementById(elementId);
@@ -164,19 +92,20 @@ async function login() {
 
         if (res.ok) {
             const result = await res.json();
-            currentUserRole = result.role;
-            localStorage.setItem('userRole', currentUserRole);
+            currentUserRole = result.role; // Store the role in the global variable
+            localStorage.setItem('userRole', currentUserRole); // Save the role to local storage
 
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('mainApp').style.display = 'block';
 
+            // Now, show/hide UI elements based on the role
             updateUIVisibility(currentUserRole);
 
-            // Set a default tab based on the user's role
-            if (currentUserRole === 'housekeeper' || currentUserRole === 'admin') {
+            // Determine the first tab to show based on the user's role
+            if (currentUserRole === 'admin' || currentUserRole === 'housekeeper') {
                 showTab('checklist');
             } else if (currentUserRole === 'storemanager') {
-                showTab('inventory');
+                showTab('housekeeping'); // Or a default tab for store managers
             }
         } else {
             displayMessage('loginMsg', 'Invalid username or password.', true);
@@ -187,23 +116,57 @@ async function login() {
     }
 }
 
+// --- New function to handle front-end access control ---
+function updateUIVisibility(role) {
+    // Hide all role-specific elements first
+    adminOnlyElements.forEach(el => el.classList.add('hidden'));
+    storeManagerOnlyElements.forEach(el => el.classList.add('hidden'));
+    housekeeperOnlyElements.forEach(el => el.classList.add('hidden'));
+
+    // Show elements based on the current user's role
+    switch (role) {
+        case 'admin':
+            document.querySelectorAll('.admin-only, .store-manager-only, .housekeeper-only').forEach(el => el.classList.remove('hidden'));
+            break;
+        case 'storemanager':
+            document.querySelectorAll('.store-manager-only').forEach(el => el.classList.remove('hidden'));
+            // Hide admin-only tabs
+            tabChecklistBtn.classList.add('hidden');
+            tabHousekeepingBtn.classList.remove('hidden');
+            tabInventoryBtn.classList.remove('hidden');
+            break;
+        case 'housekeeper':
+            document.querySelectorAll('.housekeeper-only').forEach(el => el.classList.remove('hidden'));
+            // Hide storemanager-only tabs
+            tabChecklistBtn.classList.remove('hidden');
+            tabHousekeepingBtn.classList.add('hidden');
+            tabInventoryBtn.classList.add('hidden');
+            break;
+    }
+}
+
 function logout() {
+    // Clear user role from local storage and memory
     localStorage.removeItem('userRole');
     currentUserRole = null;
+
     document.getElementById('mainApp').style.display = 'none';
     document.getElementById('loginSection').style.display = 'block';
+
     document.getElementById('username').value = '';
     document.getElementById('password').value = '';
     document.getElementById('loginMsg').textContent = '';
-    updateUIVisibility(null); // Clear the UI for the next user
+
+    // Hide all tabs and sections when logging out
+    document.querySelectorAll('.tab-button').forEach(btn => btn.classList.add('hidden'));
+    document.getElementById('roomChecklistSection').classList.add('hidden');
+    document.getElementById('housekeepingReportSection').classList.add('hidden');
+    document.getElementById('inventorySection').classList.add('hidden');
 }
+
 
 // --- Room Checklist Functionality ---
 function exportToExcel() {
-    if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper') {
-        displayMessage('message', 'You do not have permission to export checklists.', true);
-        return;
-    }
     const dataToExport = allChecklists.map(entry => ({
         'Room': entry.room,
         'Date': entry.date,
@@ -216,10 +179,6 @@ function exportToExcel() {
 }
 
 function printChecklists() {
-    if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper') {
-        displayMessage('message', 'You do not have permission to print checklists.', true);
-        return;
-    }
     const printWindow = window.open('', '_blank');
     printWindow.document.write('<html><head><title>Room Checklist</title>');
     printWindow.document.write('<style>');
@@ -249,10 +208,6 @@ function printChecklists() {
 
 document.getElementById('checklistForm').addEventListener('submit', async function (e) {
     e.preventDefault();
-    if (currentUserRole !== 'housekeeper' && currentUserRole !== 'admin') {
-        displayMessage('message', 'You do not have permission to submit checklists.', true);
-        return;
-    }
     const room = document.getElementById('room').value;
     const date = document.getElementById('date').value;
     if (!room || !date) {
@@ -263,8 +218,10 @@ document.getElementById('checklistForm').addEventListener('submit', async functi
     const items = Object.fromEntries(formData.entries());
     delete items.room;
     delete items.date;
+
     const data = { room, date, items };
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/submit-checklist`, {
             method: 'POST',
             headers: {
@@ -292,6 +249,7 @@ document.getElementById('checklistForm').addEventListener('submit', async functi
 
 async function loadChecklists() {
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/checklists`, {
             headers: {
                 'x-user-role': currentUserRole
@@ -320,15 +278,6 @@ function renderChecklistTable() {
     const start = (currentPage - 1) * rowsPerPage;
     const paginated = filtered.slice(start, start + rowsPerPage);
     tbody.innerHTML = '';
-
-    if (checklistActionsHeader) {
-        if (currentUserRole !== 'admin') {
-            checklistActionsHeader.classList.add('hidden');
-        } else {
-            checklistActionsHeader.classList.remove('hidden');
-        }
-    }
-
     if (paginated.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="text-center py-4 text-gray-500">No checklists found.</td></tr>';
     } else {
@@ -352,9 +301,19 @@ function renderChecklistTable() {
     document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages || 1}`;
     document.getElementById('prevBtn').disabled = currentPage === 1;
     document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    // Hide the 'Actions' header if the user isn't an admin
+    const actionsHeader = document.getElementById('checklistActionsHeader');
+    if (actionsHeader) {
+        if (currentUserRole !== 'admin') {
+            actionsHeader.classList.add('hidden');
+        } else {
+            actionsHeader.classList.remove('hidden');
+        }
+    }
 }
 
 function editChecklist(entry) {
+    // Only allow admins to edit
     if (currentUserRole !== 'admin') {
         displayMessage('message', 'You do not have permission to edit checklists.', true);
         return;
@@ -409,6 +368,7 @@ async function saveChecklist(id) {
         items[key] = el.value;
     });
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/checklists/${id}`, {
             method: 'PUT',
             headers: {
@@ -435,7 +395,9 @@ async function deleteChecklist(id) {
         return;
     }
     if (!window.confirm("Are you sure you want to delete this checklist?")) return;
+
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/checklists/${id}`, {
             method: 'DELETE',
             headers: {
@@ -480,14 +442,9 @@ document.getElementById('nextBtn').addEventListener('click', () => {
 
 // --- Missing Items Summary Functionality ---
 function renderMissingItemsSummary() {
+    // Only show the summary if the user is an admin or store manager
     const summaryContainer = document.getElementById('missingItemsSummary');
-    if (!summaryContainer) return;
-    
-    // Only show summary if the user is an admin or housekeeper
-    if (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper') {
-        summaryContainer.innerHTML = '';
-        return;
-    }
+    if (!summaryContainer || (currentUserRole !== 'admin' && currentUserRole !== 'storemanager')) return;
 
     const filterDateInput = document.getElementById('missingItemsDateFilter').value;
     let checklistsForSummary = allChecklists;
@@ -502,6 +459,7 @@ function renderMissingItemsSummary() {
             return entryDate.getTime() === selectedDate.getTime();
         });
     }
+
     const missingItemsCount = {};
     const missingItemsRooms = {};
 
@@ -532,17 +490,21 @@ function renderMissingItemsSummary() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Check local storage for a previously saved role
     currentUserRole = localStorage.getItem('userRole');
     if (currentUserRole) {
+        // If a role is found, automatically show the main app and update the UI
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('mainApp').style.display = 'block';
         updateUIVisibility(currentUserRole);
-        if (currentUserRole === 'housekeeper' || currentUserRole === 'admin') {
-            showTab('checklist');
+        // Load data for the default tab based on the role
+        if (currentUserRole === 'admin' || currentUserRole === 'housekeeper') {
+             showTab('checklist');
         } else if (currentUserRole === 'storemanager') {
-            showTab('inventory');
+             showTab('housekeeping');
         }
     } else {
+        // No role found, show the login page
         document.getElementById('mainApp').style.display = 'none';
     }
 });
@@ -551,13 +513,10 @@ document.addEventListener('DOMContentLoaded', () => {
 // --- Housekeeping Report Functionality ---
 document.getElementById('statusReportForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    if (currentUserRole !== 'housekeeper' && currentUserRole !== 'admin') {
-        displayMessage('statusMessage', 'You do not have permission to submit reports.', true);
-        return;
-    }
     const formData = new FormData(e.target);
     const data = Object.fromEntries(formData.entries());
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/submit-status-report`, {
             method: 'POST',
             headers: {
@@ -581,6 +540,7 @@ document.getElementById('statusReportForm').addEventListener('submit', async fun
 
 async function loadStatusReports() {
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/status-reports`, {
             headers: {
                 'x-user-role': currentUserRole
@@ -601,15 +561,14 @@ async function loadStatusReports() {
 function renderStatusReportTable() {
     const tbody = document.getElementById('statusReportBody');
     tbody.innerHTML = '';
-
-    if (statusActionsHeader) {
+    const actionsHeader = document.getElementById('statusActionsHeader');
+    if (actionsHeader) {
         if (currentUserRole !== 'admin') {
-            statusActionsHeader.classList.add('hidden');
+            actionsHeader.classList.add('hidden');
         } else {
-            statusActionsHeader.classList.remove('hidden');
+            actionsHeader.classList.remove('hidden');
         }
     }
-
     if (filteredStatusReports.length === 0) {
         tbody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-gray-500">No housekeeping reports found.</td></tr>';
     } else {
@@ -762,6 +721,7 @@ async function saveStatusReport(id) {
     const dateTime = document.getElementById(`editReportDateTime-${id}`).value;
     const updatedData = { room, category, status, remarks, dateTime };
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/status-reports/${id}`, {
             method: 'PUT',
             headers: {
@@ -789,6 +749,7 @@ async function deleteStatusReport(id) {
     }
     if (!window.confirm("Are you sure you want to delete this status report?")) return;
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/status-reports/${id}`, {
             method: 'DELETE',
             headers: {
@@ -807,13 +768,10 @@ async function deleteStatusReport(id) {
     }
 }
 
+
 // --- Inventory Management Functionality ---
 document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
     e.preventDefault();
-    if (currentUserRole !== 'admin' && currentUserRole !== 'storemanager') {
-        displayMessage('inventoryMessage', 'You do not have permission to update inventory.', true);
-        return;
-    }
     const item = document.getElementById('inventoryItem').value;
     const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
     const action = document.getElementById('inventoryAction').value;
@@ -823,6 +781,7 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
         return;
     }
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/inventory`, {
             method: 'POST',
             headers: {
@@ -850,6 +809,7 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
 
 async function loadInventory() {
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/inventory`, {
             headers: {
                 'x-user-role': currentUserRole
@@ -868,19 +828,21 @@ async function loadInventory() {
 
 function renderInventoryTable(inventoryData, isSnapshot = false) {
     const tbody = document.getElementById('inventoryBody');
+    const actionsHeader = document.getElementById('actionsHeader');
     const search = document.getElementById('inventorySearch').value.toLowerCase();
-
-    if (inventoryActionsHeader) {
+    
+    if (actionsHeader) {
         if (currentUserRole !== 'admin') {
-            inventoryActionsHeader.classList.add('hidden');
+            actionsHeader.classList.add('hidden');
         } else {
-            inventoryActionsHeader.classList.remove('hidden');
+            actionsHeader.classList.remove('hidden');
         }
     }
-
+    
     const filteredInventory = inventoryData.filter(item =>
         item.item.toLowerCase().includes(search)
     );
+
     tbody.innerHTML = '';
     if (filteredInventory.length === 0) {
         tbody.innerHTML = `<tr><td colspan="${isSnapshot ? 3 : 4}" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>`;
@@ -890,11 +852,13 @@ function renderInventoryTable(inventoryData, isSnapshot = false) {
             if (item.quantity <= item.lowStockLevel) {
                 tr.classList.add('low-stock-warning');
             }
+            
             const actionsHtml = (currentUserRole === 'admin') ? `
                 <td class="border px-4 py-2">
                     <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
                     <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
                 </td>` : '';
+            
             tr.innerHTML = `
                 <td class="border px-4 py-2">${item.item}</td>
                 <td class="border px-4 py-2">${item.quantity}</td>
@@ -952,6 +916,7 @@ async function saveInventoryItem(id) {
         return;
     }
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/inventory/${id}`, {
             method: 'PUT',
             headers: {
@@ -979,6 +944,7 @@ async function deleteInventoryItem(id) {
     }
     if (!window.confirm("Are you sure you want to delete this inventory item?")) return;
     try {
+        // CHANGE: Add the user role header to the request
         const res = await fetch(`${backendURL}/inventory/${id}`, {
             method: 'DELETE',
             headers: {
@@ -1010,27 +976,3 @@ function exportInventoryToExcel() {
 }
 
 document.getElementById('inventorySearch').addEventListener('input', () => renderInventoryTable(allInventory, false));
-
-async function getInventorySnapshot() {
-    const snapshotDate = document.getElementById('snapshotDate').value;
-    if (!snapshotDate) {
-        displayMessage('inventoryMessage', 'Please select a date.', true);
-        return;
-    }
-    try {
-        const res = await fetch(`${backendURL}/inventory/snapshot/${snapshotDate}`, {
-            headers: {
-                'x-user-role': currentUserRole
-            }
-        });
-        if (!res.ok) {
-            throw new Error('Failed to fetch inventory snapshot.');
-        }
-        const snapshotItems = await res.json();
-        renderInventoryTable(snapshotItems, true);
-        displayMessage('inventoryMessage', `Showing inventory snapshot for ${snapshotDate}.`, false);
-    } catch (err) {
-        console.error('Error fetching snapshot:', err);
-        displayMessage('inventoryMessage', 'An error occurred while fetching the inventory snapshot.', true);
-    }
-}
