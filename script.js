@@ -608,8 +608,7 @@ function renderStatusReportTable() {
     const tr = document.createElement('tr');
     tr.dataset.id = report._id;
     const actionsHtml =
-      currentUserRole === 'admin'
-        ? `
+currentUserRole === 'admin' || currentUserRole === 'housekeeper'        ? `
       <td class="border px-4 py-2">
         <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 mr-2" onclick='editStatusReport("${report._id}")'>Edit</button>
         <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600" onclick='deleteStatusReport("${report._id}")'>Delete</button>
