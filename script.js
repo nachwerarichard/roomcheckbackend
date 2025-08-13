@@ -6,6 +6,7 @@ const rowsPerPage = 5;
 let allStatusReports = [];
 let filteredStatusReports = [];
 let allInventory = []; // New array to hold all inventory items
+let customConfirmPromise = null; // Used to handle the custom confirmation dialog
 
 // --- Tab Management ---
 const tabChecklistBtn = document.getElementById('tabChecklist');
@@ -20,9 +21,6 @@ const inventorySection = document.getElementById('inventorySection'); // New sec
  * Also triggers data loading for the active tab.
  * @param {string} tabName - 'checklist', 'housekeeping', or 'inventory'
  */
-// Function to handle the logout process
-
-
 function showTab(tabName) {
     // Hide all sections first
     roomChecklistSection.classList.add('hidden');
@@ -70,6 +68,7 @@ tabInventoryBtn.addEventListener('click', () => showTab('inventory')); // New ev
  */
 function displayMessage(elementId, msg, isError = false) {
     const element = document.getElementById(elementId);
+    if (!element) return;
     element.textContent = msg;
     element.classList.remove('text-green-600', 'text-red-600');
     if (isError) {
@@ -81,6 +80,43 @@ function displayMessage(elementId, msg, isError = false) {
         element.textContent = '';
     }, 5000); // Clear message after 5 seconds
 }
+
+
+// --- Custom Modal Functionality (Replaces window.confirm) ---
+/**
+ * Shows a custom confirmation modal.
+ * @param {string} message - The message to display in the modal.
+ * @returns {Promise<boolean>} - A promise that resolves to true if confirmed, false otherwise.
+ */
+function showCustomConfirm(message) {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('customConfirmModal');
+        const modalText = document.getElementById('customConfirmText');
+        const confirmBtn = document.getElementById('customConfirmYes');
+        const cancelBtn = document.getElementById('customConfirmNo');
+
+        modalText.textContent = message;
+        modal.classList.remove('hidden');
+
+        const onConfirm = () => {
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(true);
+        };
+
+        const onCancel = () => {
+            modal.classList.add('hidden');
+            confirmBtn.removeEventListener('click', onConfirm);
+            cancelBtn.removeEventListener('click', onCancel);
+            resolve(false);
+        };
+
+        confirmBtn.addEventListener('click', onConfirm);
+        cancelBtn.addEventListener('click', onCancel);
+    });
+}
+
 
 // --- Login Function ---
 async function login() {
@@ -358,7 +394,11 @@ async function saveChecklist(id) {
  * @param {string} id - The ID of the checklist entry to delete.
  */
 async function deleteChecklist(id) {
-    if (!window.confirm("Are you sure you want to delete this checklist?")) return; // Replace with custom modal
+    // Replaced window.confirm with custom modal
+    const confirmed = await showCustomConfirm("Are you sure you want to delete this checklist?");
+    if (!confirmed) {
+        return;
+    }
 
     try {
         const res = await fetch(`${backendURL}/checklists/${id}`, {
@@ -707,7 +747,11 @@ async function saveStatusReport(id) {
  * @param {string} id - The ID of the status report entry to delete.
  */
 async function deleteStatusReport(id) {
-    if (!window.confirm("Are you sure you want to delete this status report?")) return; // Replace with custom modal
+    // Replaced window.confirm with custom modal
+    const confirmed = await showCustomConfirm("Are you sure you want to delete this status report?");
+    if (!confirmed) {
+        return;
+    }
 
     try {
         const res = await fetch(`${backendURL}/status-reports/${id}`, {
@@ -732,8 +776,7 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
     const item = document.getElementById('inventoryItem').value;
     const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
     const action = document.getElementById('inventoryAction').value;
-    // Parse const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
-     const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
+    const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
 
     if (!item || isNaN(quantity) || quantity <= 0) {
         displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
@@ -759,6 +802,8 @@ document.getElementById('inventoryForm').addEventListener('submit', async functi
         displayMessage('inventoryMessage', 'An error occurred while updating the inventory.', true);
     }
 });
+
+
 /**
  * Fetches all inventory items from the backend and updates the `allInventory` array.
  */
@@ -769,7 +814,8 @@ async function loadInventory() {
             throw new Error(`HTTP error! status: ${res.status}`);
         }
         allInventory = await res.json();
-        renderInventoryTable();
+        // Pass the live data and set isSnapshot to false
+        renderInventoryTable(allInventory, false);
     } catch (err) {
         console.error('Error loading inventory:', err);
         displayMessage('inventoryMessage', 'Failed to load inventory.', true);
@@ -777,67 +823,10 @@ async function loadInventory() {
 }
 
 /**
- * Renders the inventory table with filtered data.
- */
-/**
  * Renders the inventory table with the provided data.
  * @param {Array} inventoryData - The array of inventory items to display.
  * @param {boolean} isSnapshot - A flag to determine if the table is a historical snapshot.
  */
-// --- Inventory Management Functionality ---
-
-// Event listener for inventory form submission
-document.getElementById('inventoryForm').addEventListener('submit', async function(e) {
-    e.preventDefault();
-
-    const item = document.getElementById('inventoryItem').value;
-    const quantity = parseInt(document.getElementById('inventoryQuantity').value, 10);
-    const action = document.getElementById('inventoryAction').value;
-    const lowStockLevel = parseInt(document.getElementById('lowStockLevel').value, 10);
-
-    if (!item || isNaN(quantity) || quantity <= 0) {
-        displayMessage('inventoryMessage', 'Please enter a valid item name and quantity.', true);
-        return;
-    }
-
-    try {
-        const res = await fetch(`${backendURL}/inventory`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity, action, lowStockLevel })
-        });
-        const result = await res.json();
-        let msg = result.message || 'Inventory updated successfully.';
-        if (result.lowStockEmailSent) {
-            msg += ' Low stock email sent.';
-        }
-        displayMessage('inventoryMessage', msg);
-        e.target.reset();
-        loadInventory();
-    } catch (err) {
-        console.error('Error updating inventory:', err);
-        displayMessage('inventoryMessage', 'An error occurred while updating the inventory.', true);
-    }
-});
-
-// Use this ONE version of loadInventory
-async function loadInventory() {
-    try {
-        const res = await fetch(`${backendURL}/inventory`);
-        if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        allInventory = await res.json();
-        // Pass the live data and set isSnapshot to false
-        renderInventoryTable(allInventory, false);
-    } catch (err) {
-        console.error('Error loading inventory:', err);
-        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
-    }
-}
-
-
-// Use this ONE version of renderInventoryTable
 function renderInventoryTable(inventoryData, isSnapshot = false) {
     const tbody = document.getElementById('inventoryBody');
     const actionsHeader = document.getElementById('actionsHeader');
@@ -878,12 +867,12 @@ function renderInventoryTable(inventoryData, isSnapshot = false) {
                 <td class="border px-4 py-2">${item.lowStockLevel}</td>
                 ${actionsHtml}
             `;
-            
+
             tbody.appendChild(tr);
         });
     }
 }
-// The rest of your code follows...
+
 function editInventoryItem(id) {
     const itemToEdit = allInventory.find(item => item._id === id);
     if (!itemToEdit) {
@@ -914,21 +903,6 @@ function editInventoryItem(id) {
     }
 }
 
-
-async function loadInventory() {
-    try {
-        const res = await fetch(`${backendURL}/inventory`);
-        if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        allInventory = await res.json();
-        // Call the refactored function with the live data and set the flag to false
-        renderInventoryTable(allInventory, false);
-    } catch (err) {
-        console.error('Error loading inventory:', err);
-        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
-    }
-}
 
 /**
  * Fetches and displays the inventory snapshot for a given date.
@@ -970,12 +944,12 @@ async function saveInventoryItem(id) {
         displayMessage('inventoryMessage', 'Please enter a valid item and quantity.', true);
         return;
     }
-    
+
     try {
         const res = await fetch(`${backendURL}/inventory/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ item, quantity,lowStockLevel })
+            body: JSON.stringify({ item, quantity, lowStockLevel })
         });
         const result = await res.json();
         displayMessage('inventoryMessage', result.message || 'Inventory item updated successfully!');
@@ -992,7 +966,11 @@ async function saveInventoryItem(id) {
  * @param {string} id - The ID of the inventory item to delete.
  */
 async function deleteInventoryItem(id) {
-    if (!window.confirm("Are you sure you want to delete this inventory item?")) return;
+    // Replaced window.confirm with custom modal
+    const confirmed = await showCustomConfirm("Are you sure you want to delete this inventory item?");
+    if (!confirmed) {
+        return;
+    }
 
     try {
         const res = await fetch(`${backendURL}/inventory/${id}`, {
@@ -1023,64 +1001,9 @@ function exportInventoryToExcel() {
 }
 
 // Event listener for inventory search
-document.getElementById('inventorySearch').addEventListener('input', renderInventoryTable);
-
-async function loadInventory() {
-    try {
-        const res = await fetch(`${backendURL}/inventory`);
-        if (!res.ok) {
-            throw new Error(`HTTP error! status: ${res.status}`);
-        }
-        allInventory = await res.json();
-        // SOLUTION: Pass the allInventory array and 'false' for the isSnapshot flag
-        renderInventoryTable(allInventory, false);
-    } catch (err) {
-        console.error('Error loading inventory:', err);
-        displayMessage('inventoryMessage', 'Failed to load inventory.', true);
-    }
-}
-function renderInventoryTable(inventoryData, isSnapshot = false) {
-    const tbody = document.getElementById('inventoryBody');
-    const actionsHeader = document.getElementById('actionsHeader');
-    const search = document.getElementById('inventorySearch').value.toLowerCase();
-
-    // SOLUTION: Conditionally show/hide the header and cells
-    if (isSnapshot) {
-        actionsHeader.classList.add('hidden');
-    } else {
-        actionsHeader.classList.remove('hidden');
-    }
-
-    const filteredInventory = inventoryData.filter(item =>
-        item.item.toLowerCase().includes(search)
-    );
-
-    tbody.innerHTML = '';
-    if (filteredInventory.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="${isSnapshot ? 3 : 4}" class="text-center py-4 text-gray-500">No inventory items found.</td></tr>`;
-    } else {
-        filteredInventory.forEach(item => {
-            const tr = document.createElement('tr');
-            if (item.quantity <= item.lowStockLevel) {
-                tr.classList.add('low-stock-warning');
-            }
-
-            const actionsHtml = isSnapshot ? '' : `
-                <td class="border px-4 py-2">
-                    <button class="bg-yellow-500 text-white px-3 py-1 rounded-md hover:bg-yellow-600 transition duration-300 ease-in-out mr-2" onclick='editInventoryItem("${item._id}")'>Edit</button>
-                    <button class="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition duration-300 ease-in-out" onclick='deleteInventoryItem("${item._id}")'>Delete</button>
-                </td>`;
-
-            tr.innerHTML = `
-                <td class="border px-4 py-2">${item.item}</td>
-                <td class="border px-4 py-2">${item.quantity}</td>
-                <td class="border px-4 py-2">${item.lowStockLevel}</td>
-                ${actionsHtml}
-            `;
-            tbody.appendChild(tr);
-        });
-    }
-}
+document.getElementById('inventorySearch').addEventListener('input', () => {
+    renderInventoryTable(allInventory, false);
+});
 
 
 // --- Initial Load ---
