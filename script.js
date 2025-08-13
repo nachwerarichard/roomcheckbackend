@@ -592,12 +592,11 @@ function renderStatusReportTable() {
   const tbody = document.getElementById('statusReportBody');
   if (!tbody) return;
   const actionsHeader = document.getElementById('statusActionsHeader');
-  actionsHeader && (currentUserRole !== 'admin'
-    ? actionsHeader.classList.add('hidden')
-    : actionsHeader.classList.remove('hidden'));
+actionsHeader && (currentUserRole !== 'admin' && currentUserRole !== 'housekeeper'
+  ? actionsHeader.classList.add('hidden')
+  : actionsHeader.classList.remove('hidden'));
 
-  tbody.innerHTML = '';
-
+tbody.innerHTML = '';
   if (filteredStatusReports.length === 0) {
     tbody.innerHTML =
       '<tr><td colspan="6" class="text-center py-4 text-gray-500">No housekeeping reports found.</td></tr>';
