@@ -7,8 +7,13 @@ const mongoose = require('mongoose');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_USER = process.env.ADMIN_USER || 'admin';
-const ADMIN_PASS = process.env.ADMIN_PASS || '123';
+
+// Define user roles and credentials
+const USERS = {
+  'admin': { password: process.env.ADMIN_PASS || '123', role: 'admin' },
+  'storemanager': { password: process.env.STORE_MANAGER_PASS || 'storepass', role: 'storemanager' },
+  'housekeeper': { password: process.env.HOUSEKEEPER_PASS || 'housepass', role: 'housekeeper' },
+};
 
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
@@ -92,17 +97,36 @@ async function createAuditLog(action, details) {
   }
 }
 
-// --- Admin Login ---
+// --- Middleware for Role-Based Access Control ---
+/**
+ * Express middleware to restrict access to endpoints based on user roles.
+ * @param {string[]} roles - An array of allowed roles (e.g., ['admin', 'housekeeper']).
+ */
+function authorize(roles = []) {
+  return (req, res, next) => {
+    // In a production environment, this would be a JWT token containing user info.
+    // For this example, we'll assume the role is sent in a custom header.
+    const userRole = req.headers['x-user-role'];
+
+    if (!userRole || !roles.includes(userRole)) {
+      return res.status(403).json({ message: 'Forbidden: You do not have permission to access this resource.' });
+    }
+    next();
+  };
+}
+
+// --- Admin Login (Updated) ---
 app.post('/login', (req, res) => {
   const { username, password } = req.body;
 
-  if (username === ADMIN_USER && password === ADMIN_PASS) {
-    // 💡 Audit log for successful login attempt
+  const user = USERS[username];
+
+  if (user && user.password === password) {
     createAuditLog('Login Successful', { username });
-    return res.status(200).json({ message: 'Login successful' });
+    // Send back the user's role on successful login
+    return res.status(200).json({ message: 'Login successful', role: user.role });
   }
 
-  // 💡 Audit log for failed login attempt
   createAuditLog('Login Failed', { username, message: 'Invalid credentials' });
   return res.status(401).json({ message: 'Invalid credentials' });
 });
@@ -146,11 +170,10 @@ async function sendLowStockEmail(item, quantity, lowStockLevel) {
   return false;
 }
 
-
 // --- API Endpoints for Room Checklists (existing) ---
 
-// Submit checklist
-app.post('/submit-checklist', async (req, res) => {
+// Submit checklist (Protected for admin and housekeeper)
+app.post('/submit-checklist', authorize(['admin', 'housekeeper']), async (req, res) => {
   const { room, date, items } = req.body;
 
   if (!room || !date || !items) {
@@ -162,10 +185,8 @@ app.post('/submit-checklist', async (req, res) => {
 
   try {
     await checklist.save();
-    // 💡 Audit log for new checklist submission
     createAuditLog('Checklist Submitted', { room, date });
 
-    // Check for missing items
     const missingItems = Object.entries(items).filter(([, val]) => val === 'no');
     if (missingItems.length > 0) {
       const html = `<p>Room <strong>${room}</strong> on <strong>${date}</strong> is missing:</p>
@@ -194,8 +215,8 @@ app.post('/submit-checklist', async (req, res) => {
   }
 });
 
-// Get all checklists
-app.get('/checklists', async (req, res) => {
+// Get all checklists (Protected for admin and housekeeper)
+app.get('/checklists', authorize(['admin', 'housekeeper']), async (req, res) => {
   try {
     const data = await Checklist.find().sort({ date: -1, createdAt: -1 });
     res.status(200).json(data);
@@ -205,14 +226,13 @@ app.get('/checklists', async (req, res) => {
   }
 });
 
-// Update checklist by ID
-app.put('/checklists/:id', async (req, res) => {
+// Update checklist by ID (Protected for admin and housekeeper)
+app.put('/checklists/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
   try {
     const updated = await Checklist.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!updated) {
       return res.status(404).json({ message: 'Checklist not found' });
     }
-    // 💡 Audit log for checklist update
     createAuditLog('Checklist Updated', { id: updated._id, room: updated.room });
     res.status(200).json({ message: 'Checklist updated successfully', updated });
   } catch (err) {
@@ -221,14 +241,13 @@ app.put('/checklists/:id', async (req, res) => {
   }
 });
 
-// Delete checklist
-app.delete('/checklists/:id', async (req, res) => {
+// Delete checklist (Protected for admin and housekeeper)
+app.delete('/checklists/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
   try {
     const result = await Checklist.findByIdAndDelete(req.params.id);
     if (!result) {
       return res.status(404).json({ message: 'Checklist not found' });
     }
-    // 💡 Audit log for checklist deletion
     createAuditLog('Checklist Deleted', { id: req.params.id });
     res.status(200).json({ message: 'Checklist deleted successfully' });
   } catch (err) {
@@ -239,8 +258,8 @@ app.delete('/checklists/:id', async (req, res) => {
 
 // --- API Endpoints for Housekeeping Room Status Reports (existing) ---
 
-// Submit a new status report
-app.post('/submit-status-report', async (req, res) => {
+// Submit a new status report (Protected for admin and housekeeper)
+app.post('/submit-status-report', authorize(['admin', 'housekeeper']), async (req, res) => {
   const { room, category, status, remarks, dateTime } = req.body;
 
   if (!room || !category || !status || !dateTime) {
@@ -250,7 +269,6 @@ app.post('/submit-status-report', async (req, res) => {
   try {
     const newReport = new StatusReport({ room, category, status, remarks, dateTime });
     await newReport.save();
-    // 💡 Audit log for new status report submission
     createAuditLog('Status Report Submitted', { room, category, status });
     res.status(201).json({ message: 'Status report submitted successfully', report: newReport });
   } catch (err) {
@@ -259,8 +277,8 @@ app.post('/submit-status-report', async (req, res) => {
   }
 });
 
-// Get all status reports
-app.get('/status-reports', async (req, res) => {
+// Get all status reports (Protected for admin and housekeeper)
+app.get('/status-reports', authorize(['admin', 'housekeeper']), async (req, res) => {
   try {
     const reports = await StatusReport.find().sort({ dateTime: -1 });
     res.status(200).json(reports);
@@ -270,14 +288,13 @@ app.get('/status-reports', async (req, res) => {
   }
 });
 
-// Update a status report by ID
-app.put('/status-reports/:id', async (req, res) => {
+// Update a status report by ID (Protected for admin and housekeeper)
+app.put('/status-reports/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
   try {
     const updated = await StatusReport.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!updated) {
       return res.status(404).json({ message: 'Status report not found' });
     }
-    // 💡 Audit log for status report update
     createAuditLog('Status Report Updated', { id: updated._id, room: updated.room });
     res.status(200).json({ message: 'Status report updated successfully', updated });
   } catch (err) {
@@ -286,14 +303,13 @@ app.put('/status-reports/:id', async (req, res) => {
   }
 });
 
-// Delete a status report by ID
-app.delete('/status-reports/:id', async (req, res) => {
+// Delete a status report by ID (Protected for admin and housekeeper)
+app.delete('/status-reports/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
   try {
     const deleted = await StatusReport.findByIdAndDelete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ message: 'Status report not found' });
     }
-    // 💡 Audit log for status report deletion
     createAuditLog('Status Report Deleted', { id: req.params.id });
     res.status(200).json({ message: 'Status report deleted successfully' });
   } catch (err) {
@@ -303,7 +319,8 @@ app.delete('/status-reports/:id', async (req, res) => {
 });
 
 // This is your new backend route for fetching an inventory snapshot
-app.get('/inventory/snapshot/:date', async (req, res) => {
+// (Protected for admin and store manager)
+app.get('/inventory/snapshot/:date', authorize(['admin', 'storemanager']), async (req, res) => {
   try {
     const { date } = req.params;
     const startOfDay = new Date(date);
@@ -312,15 +329,13 @@ app.get('/inventory/snapshot/:date', async (req, res) => {
       return res.status(400).json({ message: 'Invalid date format' });
     }
 
-    // ⭐ FIX: Set the snapshot date to the end of the day in UTC ⭐
     const endOfDay = new Date(startOfDay);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    // Step 1: Calculate the total quantity for each item up to the snapshot date
     const snapshotQuantities = await Transaction.aggregate([
       {
         $match: {
-          timestamp: { $lte: endOfDay } // Use endOfDay for the filter
+          timestamp: { $lte: endOfDay }
         }
       },
       {
@@ -336,22 +351,20 @@ app.get('/inventory/snapshot/:date', async (req, res) => {
             }
           }
         }
-      } // <-- This brace was missing and has been added to fix the syntax error
+      }
     ]);
 
     const inventoryItems = await Inventory.find({ item: { $in: snapshotQuantities.map(s => s._id) } });
 
-    // Step 3: Combine the quantity and lowStockLevel data
     const combinedSnapshot = snapshotQuantities.map(snapshotItem => {
       const inventoryItem = inventoryItems.find(i => i.item === snapshotItem._id);
       return {
         item: snapshotItem._id,
         quantity: snapshotItem.totalQuantity,
-        lowStockLevel: inventoryItem ? inventoryItem.lowStockLevel : 0 // Use the value from Inventory or default to 0
+        lowStockLevel: inventoryItem ? inventoryItem.lowStockLevel : 0
       };
     });
 
-    // 💡 Audit log for fetching an inventory snapshot
     createAuditLog('Inventory Snapshot Fetched', { date: date });
 
     res.status(200).json(combinedSnapshot);
@@ -364,10 +377,10 @@ app.get('/inventory/snapshot/:date', async (req, res) => {
 
 // --- 🆕 UPDATED: API Endpoints for Inventory Management ---
 
-// Add or Use Inventory (Create/Update logic combined)
-app.post('/inventory', async (req, res) => {
+// Add or Use Inventory (Protected for admin and store manager)
+app.post('/inventory', authorize(['admin', 'storemanager']), async (req, res) => {
   const { item, quantity, action, lowStockLevel } = req.body;
-  
+
   if (!item || !quantity || !action) {
     return res.status(400).json({ message: 'Missing required fields' });
   }
@@ -375,8 +388,7 @@ app.post('/inventory', async (req, res) => {
   try {
     let inventoryItem = await Inventory.findOne({ item: { $regex: new RegExp(`^${item}$`, 'i') } });
     let lowStockEmailSent = false;
-    
-    // Step 1: Check if item exists and update its current quantity
+
     if (inventoryItem) {
       if (action === 'add') {
         inventoryItem.quantity += quantity;
@@ -386,11 +398,11 @@ app.post('/inventory', async (req, res) => {
         }
         inventoryItem.quantity -= quantity;
       }
-      
+
       if (lowStockLevel !== undefined && lowStockLevel !== null) {
         inventoryItem.lowStockLevel = lowStockLevel;
       }
-      
+
       await inventoryItem.save();
     } else if (action === 'add') {
       const newLowStockLevel = lowStockLevel !== undefined && lowStockLevel !== null ? Number(lowStockLevel) : 10;
@@ -400,7 +412,6 @@ app.post('/inventory', async (req, res) => {
       return res.status(404).json({ message: 'Item not found in inventory' });
     }
 
-    // ⭐ Step 2: Create a new Transaction record for this movement ⭐
     const newTransaction = new Transaction({
       item: inventoryItem.item,
       quantity: quantity,
@@ -409,7 +420,6 @@ app.post('/inventory', async (req, res) => {
     });
     await newTransaction.save();
 
-    // 💡 Audit log for inventory transaction
     createAuditLog('Inventory Transaction', { item: inventoryItem.item, quantity, action });
 
     lowStockEmailSent = await sendLowStockEmail(inventoryItem.item, inventoryItem.quantity, inventoryItem.lowStockLevel);
@@ -420,8 +430,8 @@ app.post('/inventory', async (req, res) => {
     res.status(500).json({ message: 'Server error while updating inventory' });
   }
 });
-// Get all inventory items
-app.get('/inventory', async (req, res) => {
+// Get all inventory items (Protected for admin and store manager)
+app.get('/inventory', authorize(['admin', 'storemanager']), async (req, res) => {
   try {
     const items = await Inventory.find().sort({ item: 1 });
     res.status(200).json(items);
@@ -431,16 +441,14 @@ app.get('/inventory', async (req, res) => {
   }
 });
 
-// Update an inventory item by ID (allows direct editing of quantity and name)
-app.put('/inventory/:id', async (req, res) => {
+// Update an inventory item by ID (Protected for admin and store manager)
+app.put('/inventory/:id', authorize(['admin', 'storemanager']), async (req, res) => {
   try {
     const updated = await Inventory.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!updated) {
       return res.status(404).json({ message: 'Inventory item not found' });
     }
-    // Use the updated lowStockLevel for the email check
     await sendLowStockEmail(updated.item, updated.quantity, updated.lowStockLevel);
-    // 💡 Audit log for inventory item update
     createAuditLog('Inventory Item Updated', { id: updated._id, item: updated.item });
     res.status(200).json({ message: 'Inventory item updated successfully', updated });
   } catch (err) {
@@ -449,14 +457,13 @@ app.put('/inventory/:id', async (req, res) => {
   }
 });
 
-// Delete an inventory item by ID
-app.delete('/inventory/:id', async (req, res) => {
+// Delete an inventory item by ID (Protected for admin and store manager)
+app.delete('/inventory/:id', authorize(['admin', 'storemanager']), async (req, res) => {
   try {
     const deleted = await Inventory.findByIdAndDelete(req.params.id);
     if (!deleted) {
       return res.status(404).json({ message: 'Inventory item not found' });
     }
-    // 💡 Audit log for inventory item deletion
     createAuditLog('Inventory Item Deleted', { id: req.params.id });
     res.status(200).json({ message: 'Inventory item deleted successfully' });
   } catch (err) {
