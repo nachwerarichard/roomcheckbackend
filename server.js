@@ -8,13 +8,6 @@ const mongoose = require('mongoose');
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Define user roles and credentials
-const USERS = {
-  'admin': { password: process.env.ADMIN_PASS || '123', role: 'admin' },
-  'storemanager': { password: process.env.STORE_MANAGER_PASS || 'storepass', role: 'storemanager' },
-  'housekeeper': { password: process.env.HOUSEKEEPER_PASS || 'housepass', role: 'housekeeper' },
-};
-
 // Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log('✅ MongoDB connected'))
@@ -25,11 +18,8 @@ mongoose.connect(process.env.MONGO_URI)
 
 // Middleware
 app.use(express.json());
-const corsOptions = {
-  origin: 'https://harmonious-crumble-2ca9ba.netlify.app',
-  optionsSuccessStatus: 200 // For legacy browsers
-};
-app.use(cors(corsOptions));
+// Allowing all origins for unrestricted access
+app.use(cors());
 
 // --- Mongoose Schemas and Models ---
 
@@ -53,8 +43,7 @@ const statusReportSchema = new mongoose.Schema({
 
 const StatusReport = mongoose.model('StatusReport', statusReportSchema);
 
-// Inventory Schema and Model with custom lowStockLevel
-// ⭐ FIX: Removed 'unique: true' from 'item' to fix the E11000 duplicate key error
+// Inventory Schema and Model
 const inventorySchema = new mongoose.Schema({
   item: { type: String, required: true },
   quantity: { type: Number, required: true, min: 0, default: 0 },
@@ -72,7 +61,7 @@ const transactionSchema = new mongoose.Schema({
 
 const Transaction = mongoose.model('Transaction', transactionSchema);
 
-// 🆕 NEW: Audit Log Schema and Model for secure logging of events
+// Audit Log Schema and Model
 const auditLogSchema = new mongoose.Schema({
   action: { type: String, required: true },
   details: { type: Object, required: true },
@@ -82,11 +71,6 @@ const auditLogSchema = new mongoose.Schema({
 const AuditLog = mongoose.model('AuditLog', auditLogSchema);
 
 // --- Secure Logging Function ---
-/**
- * Creates and saves a new audit log entry.
- * @param {string} action - A brief description of the action (e.g., 'Checklist Submitted').
- * @param {object} details - An object containing non-sensitive details about the action.
- */
 async function createAuditLog(action, details) {
   try {
     const log = new AuditLog({ action, details });
@@ -97,40 +81,6 @@ async function createAuditLog(action, details) {
   }
 }
 
-// --- Middleware for Role-Based Access Control ---
-/**
- * Express middleware to restrict access to endpoints based on user roles.
- * @param {string[]} roles - An array of allowed roles (e.g., ['admin', 'housekeeper']).
- */
-function authorize(roles = []) {
-  return (req, res, next) => {
-    // In a production environment, this would be a JWT token containing user info.
-    // For this example, we'll assume the role is sent in a custom header.
-    const userRole = req.headers['x-user-role'];
-
-    if (!userRole || !roles.includes(userRole)) {
-      return res.status(403).json({ message: 'Forbidden: You do not have permission to access this resource.' });
-    }
-    next();
-  };
-}
-
-// --- Admin Login (Updated) ---
-app.post('/login', (req, res) => {
-  const { username, password } = req.body;
-
-  const user = USERS[username];
-
-  if (user && user.password === password) {
-    createAuditLog('Login Successful', { username });
-    // Send back the user's role on successful login
-    return res.status(200).json({ message: 'Login successful', role: user.role });
-  }
-
-  createAuditLog('Login Failed', { username, message: 'Invalid credentials' });
-  return res.status(401).json({ message: 'Invalid credentials' });
-});
-
 // --- Email Transporter ---
 const transporter = nodemailer.createTransport({
   service: 'gmail',
@@ -140,23 +90,16 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-// 🆕 UPDATED: Low Stock Email Notification Function
-/**
- * Sends a low stock email notification if an item's quantity is below its specific lowStockLevel.
- * @param {string} item - The name of the low-stock item.
- * @param {number} quantity - The current quantity of the item.
- * @param {number} lowStockLevel - The custom low stock threshold for this item.
- */
 async function sendLowStockEmail(item, quantity, lowStockLevel) {
-  if (quantity <= lowStockLevel) { // Use the item-specific threshold
+  if (quantity <= lowStockLevel) {
     const html = `<p><strong>Urgent Low Stock Alert!</strong></p>
-                    <p>The inventory for <strong>${item}</strong> is critically low. There are only <strong>${quantity}</strong> units remaining. The low stock level for this item is ${lowStockLevel}.</p>
-                    <p>Please reorder this item as soon as possible.</p>`;
+                  <p>The inventory for <strong>${item}</strong> is critically low. There are only <strong>${quantity}</strong> units remaining. The low stock level for this item is ${lowStockLevel}.</p>
+                  <p>Please reorder this item as soon as possible.</p>`;
 
     try {
       await transporter.sendMail({
         from: process.env.EMAIL_USER,
-        to: process.env.EMAIL_USER, // Sends email to self (admin)
+        to: process.env.EMAIL_USER,
         subject: `LOW STOCK ALERT: ${item}`,
         html,
       });
@@ -170,10 +113,11 @@ async function sendLowStockEmail(item, quantity, lowStockLevel) {
   return false;
 }
 
-// --- API Endpoints for Room Checklists (existing) ---
+// --- API Endpoints ---
+// No login endpoint, all access is unrestricted
 
-// Submit checklist (Protected for admin and housekeeper)
-app.post('/submit-checklist', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Submit checklist
+app.post('/submit-checklist', async (req, res) => {
   const { room, date, items } = req.body;
 
   if (!room || !date || !items) {
@@ -215,8 +159,8 @@ app.post('/submit-checklist', authorize(['admin', 'housekeeper']), async (req, r
   }
 });
 
-// Get all checklists (Protected for admin and housekeeper)
-app.get('/checklists', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Get all checklists
+app.get('/checklists', async (req, res) => {
   try {
     const data = await Checklist.find().sort({ date: -1, createdAt: -1 });
     res.status(200).json(data);
@@ -226,8 +170,8 @@ app.get('/checklists', authorize(['admin', 'housekeeper']), async (req, res) => 
   }
 });
 
-// Update checklist by ID (Protected for admin and housekeeper)
-app.put('/checklists/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Update checklist by ID
+app.put('/checklists/:id', async (req, res) => {
   try {
     const updated = await Checklist.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!updated) {
@@ -241,8 +185,8 @@ app.put('/checklists/:id', authorize(['admin', 'housekeeper']), async (req, res)
   }
 });
 
-// Delete checklist (Protected for admin and housekeeper)
-app.delete('/checklists/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Delete checklist
+app.delete('/checklists/:id', async (req, res) => {
   try {
     const result = await Checklist.findByIdAndDelete(req.params.id);
     if (!result) {
@@ -256,10 +200,8 @@ app.delete('/checklists/:id', authorize(['admin', 'housekeeper']), async (req, r
   }
 });
 
-// --- API Endpoints for Housekeeping Room Status Reports (existing) ---
-
-// Submit a new status report (Protected for admin and housekeeper)
-app.post('/submit-status-report', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Submit a new status report
+app.post('/submit-status-report', async (req, res) => {
   const { room, category, status, remarks, dateTime } = req.body;
 
   if (!room || !category || !status || !dateTime) {
@@ -277,8 +219,8 @@ app.post('/submit-status-report', authorize(['admin', 'housekeeper']), async (re
   }
 });
 
-// Get all status reports (Protected for admin and housekeeper)
-app.get('/status-reports', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Get all status reports
+app.get('/status-reports', async (req, res) => {
   try {
     const reports = await StatusReport.find().sort({ dateTime: -1 });
     res.status(200).json(reports);
@@ -288,8 +230,8 @@ app.get('/status-reports', authorize(['admin', 'housekeeper']), async (req, res)
   }
 });
 
-// Update a status report by ID (Protected for admin and housekeeper)
-app.put('/status-reports/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Update a status report by ID
+app.put('/status-reports/:id', async (req, res) => {
   try {
     const updated = await StatusReport.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!updated) {
@@ -303,8 +245,8 @@ app.put('/status-reports/:id', authorize(['admin', 'housekeeper']), async (req, 
   }
 });
 
-// Delete a status report by ID (Protected for admin and housekeeper)
-app.delete('/status-reports/:id', authorize(['admin', 'housekeeper']), async (req, res) => {
+// Delete a status report by ID
+app.delete('/status-reports/:id', async (req, res) => {
   try {
     const deleted = await StatusReport.findByIdAndDelete(req.params.id);
     if (!deleted) {
@@ -319,8 +261,7 @@ app.delete('/status-reports/:id', authorize(['admin', 'housekeeper']), async (re
 });
 
 // This is your new backend route for fetching an inventory snapshot
-// (Protected for admin and store manager)
-app.get('/inventory/snapshot/:date', authorize(['admin', 'storemanager']), async (req, res) => {
+app.get('/inventory/snapshot/:date', async (req, res) => {
   try {
     const { date } = req.params;
     const startOfDay = new Date(date);
@@ -375,10 +316,8 @@ app.get('/inventory/snapshot/:date', authorize(['admin', 'storemanager']), async
   }
 });
 
-// --- 🆕 UPDATED: API Endpoints for Inventory Management ---
-
-// Add or Use Inventory (Protected for admin and store manager)
-app.post('/inventory', authorize(['admin', 'storemanager']), async (req, res) => {
+// Add or Use Inventory
+app.post('/inventory', async (req, res) => {
   const { item, quantity, action, lowStockLevel } = req.body;
 
   if (!item || !quantity || !action) {
@@ -430,8 +369,9 @@ app.post('/inventory', authorize(['admin', 'storemanager']), async (req, res) =>
     res.status(500).json({ message: 'Server error while updating inventory' });
   }
 });
-// Get all inventory items (Protected for admin and store manager)
-app.get('/inventory', authorize(['admin', 'storemanager']), async (req, res) => {
+
+// Get all inventory items
+app.get('/inventory', async (req, res) => {
   try {
     const items = await Inventory.find().sort({ item: 1 });
     res.status(200).json(items);
@@ -441,8 +381,8 @@ app.get('/inventory', authorize(['admin', 'storemanager']), async (req, res) => 
   }
 });
 
-// Update an inventory item by ID (Protected for admin and store manager)
-app.put('/inventory/:id', authorize(['admin', 'storemanager']), async (req, res) => {
+// Update an inventory item by ID
+app.put('/inventory/:id', async (req, res) => {
   try {
     const updated = await Inventory.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
     if (!updated) {
@@ -457,8 +397,8 @@ app.put('/inventory/:id', authorize(['admin', 'storemanager']), async (req, res)
   }
 });
 
-// Delete an inventory item by ID (Protected for admin and store manager)
-app.delete('/inventory/:id', authorize(['admin', 'storemanager']), async (req, res) => {
+// Delete an inventory item by ID
+app.delete('/inventory/:id', async (req, res) => {
   try {
     const deleted = await Inventory.findByIdAndDelete(req.params.id);
     if (!deleted) {
