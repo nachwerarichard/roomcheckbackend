@@ -1,681 +1,697 @@
-import React, { useState, useEffect } from 'react';
-
-// Define the new backend API URL
-const backendURL = 'https://roomcheckbackend-grf6.onrender.com';
-// Function to humanize a string (e.g., 'bed_linens' -> 'Bed Linens')
-const humanize = (str) =>
-  String(str)
-    .replace(/_/g, ' ')
-    .replace(/\b\w/g, (l) => l.toUpperCase());
-
-// Main App Component
-const App = () => {
-  // State for application logic
-  const [activeTab, setActiveTab] = useState('checklist');
-  const [notification, setNotification] = useState({ message: '', error: false, show: false });
-  const [confirmModal, setConfirmModal] = useState({
-    show: false,
-    message: '',
-    onConfirm: () => {},
-  });
-  const [isLoading, setIsLoading] = useState(false);
-
-  // State for each section's data and UI
-  const [checklists, setChecklists] = useState([]);
-  const [housekeeping, setHousekeeping] = useState([]);
-  const [inventory, setInventory] = useState([]);
-  
-  // State for forms and tables
-  const [newChecklist, setNewChecklist] = useState({
-    room: '',
-    date: '',
-    items: {
-      towels: 'yes',
-      toiletries: 'yes',
-      bed_linens: 'yes',
-    },
-  });
-  const [newHousekeeping, setNewHousekeeping] = useState({
-    room: '',
-    issue: '',
-    status: 'pending',
-    date: '',
-  });
-  const [newInventory, setNewInventory] = useState({
-    item: '',
-    quantity: '',
-  });
-  const [checklistSearch, setChecklistSearch] = useState('');
-  const [housekeepingSearch, setHousekeepingSearch] = useState('');
-  const [inventorySearch, setInventorySearch] = useState('');
-
-  // Notification logic
-  const showNotification = (message, isError = false) => {
-    setNotification({ message, error: isError, show: true });
-    setTimeout(() => {
-      setNotification({ message: '', error: false, show: false });
-    }, 3000);
-  };
-
-  const showConfirmModal = (message, onConfirm) => {
-    setConfirmModal({ show: true, message, onConfirm });
-  };
-
-  const hideConfirmModal = () => {
-    setConfirmModal({ show: false, message: '', onConfirm: () => {} });
-  };
-
-  // --- Data Fetching and CRUD Functions ---
-  const fetchData = async () => {
-    setIsLoading(true);
-    try {
-      const checklistsRes = await fetch(`${backendURL}/checklists`);
-      const housekeepingRes = await fetch(`${backendURL}/housekeeping`);
-      const inventoryRes = await fetch(`${backendURL}/inventory`);
-
-      const checklistsData = await checklistsRes.json();
-      const housekeepingData = await housekeepingRes.json();
-      const inventoryData = await inventoryRes.json();
-      
-      setChecklists(checklistsData);
-      setHousekeeping(housekeepingData);
-      setInventory(inventoryData);
-    } catch (error) {
-      console.error('Failed to fetch data:', error);
-      showNotification('Failed to load data. Please check the backend connection.', true);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const addChecklist = async (e) => {
-    e.preventDefault();
-    if (!newChecklist.room || !newChecklist.date) {
-      showNotification('Room and date are required.', true);
-      return;
-    }
-    try {
-      await fetch(`${backendURL}/checklists`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newChecklist),
-      });
-      showNotification('Checklist submitted successfully!');
-      setNewChecklist({
-        room: '',
-        date: '',
-        items: { towels: 'yes', toiletries: 'yes', bed_linens: 'yes' },
-      });
-      fetchData();
-    } catch (error) {
-      console.error('Failed to add checklist:', error);
-      showNotification('Failed to add checklist.', true);
-    }
-  };
-
-  const deleteChecklist = async (id) => {
-    showConfirmModal('Are you sure you want to delete this checklist?', async () => {
-      try {
-        await fetch(`${backendURL}/checklists/${id}`, { method: 'DELETE' });
-        showNotification('Checklist deleted!');
-        fetchData();
-      } catch (error) {
-        console.error('Failed to delete checklist:', error);
-        showNotification('Failed to delete checklist.', true);
-      }
-      hideConfirmModal();
-    });
-  };
-
-  const addHousekeeping = async (e) => {
-    e.preventDefault();
-    if (!newHousekeeping.room || !newHousekeeping.issue) {
-      showNotification('Room and issue are required.', true);
-      return;
-    }
-    try {
-      await fetch(`${backendURL}/housekeeping`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newHousekeeping),
-      });
-      showNotification('Housekeeping report added!');
-      setNewHousekeeping({ room: '', issue: '', status: 'pending', date: '' });
-      fetchData();
-    } catch (error) {
-      console.error('Failed to add housekeeping report:', error);
-      showNotification('Failed to add housekeeping report.', true);
-    }
-  };
-
-  const updateHousekeeping = async (id, status) => {
-    try {
-      await fetch(`${backendURL}/housekeeping/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status }),
-      });
-      showNotification('Housekeeping status updated!');
-      fetchData();
-    } catch (error) {
-      console.error('Failed to update housekeeping status:', error);
-      showNotification('Failed to update housekeeping status.', true);
-    }
-  };
-
-  const deleteHousekeeping = async (id) => {
-    showConfirmModal('Are you sure you want to delete this report?', async () => {
-      try {
-        await fetch(`${backendURL}/housekeeping/${id}`, { method: 'DELETE' });
-        showNotification('Housekeeping report deleted!');
-        fetchData();
-      } catch (error) {
-        console.error('Failed to delete housekeeping report:', error);
-        showNotification('Failed to delete housekeeping report.', true);
-      }
-      hideConfirmModal();
-    });
-  };
-
-  const addInventory = async (e) => {
-    e.preventDefault();
-    if (!newInventory.item || !newInventory.quantity) {
-      showNotification('Item and quantity are required.', true);
-      return;
-    }
-    try {
-      await fetch(`${backendURL}/inventory`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(newInventory),
-      });
-      showNotification('Inventory item added!');
-      setNewInventory({ item: '', quantity: '' });
-      fetchData();
-    } catch (error) {
-      console.error('Failed to add inventory item:', error);
-      showNotification('Failed to add inventory item.', true);
-    }
-  };
-
-  const updateInventory = async (id, newQuantity) => {
-    try {
-      await fetch(`${backendURL}/inventory/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ quantity: newQuantity }),
-      });
-      showNotification('Inventory updated!');
-      fetchData();
-    } catch (error) {
-      console.error('Failed to update inventory item:', error);
-      showNotification('Failed to update inventory item.', true);
-    }
-  };
-
-  const deleteInventory = async (id) => {
-    showConfirmModal('Are you sure you want to delete this item?', async () => {
-      try {
-        await fetch(`${backendURL}/inventory/${id}`, { method: 'DELETE' });
-        showNotification('Inventory item deleted!');
-        fetchData();
-      } catch (error) {
-        console.error('Failed to delete inventory item:', error);
-        showNotification('Failed to delete inventory item.', true);
-      }
-      hideConfirmModal();
-    });
-  };
-
-  // --- Export Functionality (Remains the same as it's a client-side function) ---
-  const exportToExcel = (data, fileName) => {
-    const ws = XLSX.utils.json_to_sheet(data);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Data');
-    XLSX.writeFile(wb, fileName);
-  };
-
-  // Filtered lists for search functionality
-  const filteredChecklists = checklists.filter((entry) => {
-    const haystack = `${entry.room} ${entry.date} ${JSON.stringify(entry.items)}`.toLowerCase();
-    return haystack.includes(checklistSearch.toLowerCase());
-  });
-
-  const filteredHousekeeping = housekeeping.filter((entry) => {
-    const haystack = `${entry.room} ${entry.issue} ${entry.status} ${entry.date}`.toLowerCase();
-    return haystack.includes(housekeepingSearch.toLowerCase());
-  });
-
-  const filteredInventory = inventory.filter((entry) => {
-    const haystack = `${entry.item} ${entry.quantity}`.toLowerCase();
-    return haystack.includes(inventorySearch.toLowerCase());
-  });
-
-  return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-sans">
-      <style>{`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hotel Management</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
         body {
-          font-family: 'Inter', sans-serif;
+            font-family: 'Inter', sans-serif;
         }
         .modal-overlay {
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: rgba(0, 0, 0, 0.5);
-          display: flex;
-          justify-content: center;
-          align-items: center;
-          z-index: 1000;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
         }
-      `}</style>
-      <script src="https://cdn.tailwindcss.com"></script>
-      <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-      <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl">
-        <header className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Hotel Management</h1>
-          <p className="text-xs text-gray-500">API Backend: <span className="font-mono">{backendURL}</span></p>
-        </header>
+    </style>
+</head>
+<body>
+    <div id="root"></div>
 
-        {/* Notification Modal */}
-        <div
-          id="notification"
-          className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-md transition-opacity duration-300 ${notification.show ? 'opacity-100' : 'opacity-0 hidden'} ${
-            notification.error ? 'bg-red-500' : 'bg-green-500'
-          } text-white`}
-        >
-          {notification.message}
-        </div>
+    <script type="text/babel">
+      // Define the new backend API URL
+      const backendURL = 'https://roomcheckbackend-grf6.onrender.com';
 
-        {/* Custom Confirmation Modal */}
-        {confirmModal.show && (
-          <div className="modal-overlay">
-            <div className="bg-white p-6 rounded-lg shadow-xl text-center">
-              <p className="text-lg font-semibold mb-4">{confirmModal.message}</p>
-              <div className="flex justify-center space-x-4">
-                <button
-                  onClick={confirmModal.onConfirm}
-                  className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors"
-                >
-                  Confirm
-                </button>
-                <button
-                  onClick={hideConfirmModal}
-                  className="bg-gray-300 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
+      // Function to humanize a string (e.g., 'bed_linens' -> 'Bed Linens')
+      const humanize = (str) =>
+        String(str)
+          .replace(/_/g, ' ')
+          .replace(/\b\w/g, (l) => l.toUpperCase());
 
-        {/* Tab Navigation */}
-        <nav className="mb-8">
-          <ul className="flex justify-center space-x-2 sm:space-x-4">
-            <li
-              className={`cursor-pointer px-4 py-2 rounded-lg transition-colors duration-200 ${
-                activeTab === 'checklist' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              onClick={() => setActiveTab('checklist')}
-            >
-              Room Checklist
-            </li>
-            <li
-              className={`cursor-pointer px-4 py-2 rounded-lg transition-colors duration-200 ${
-                activeTab === 'housekeeping' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              onClick={() => setActiveTab('housekeeping')}
-            >
-              Housekeeping
-            </li>
-            <li
-              className={`cursor-pointer px-4 py-2 rounded-lg transition-colors duration-200 ${
-                activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              }`}
-              onClick={() => setActiveTab('inventory')}
-            >
-              Inventory
-            </li>
-          </ul>
-        </nav>
+      // Main App Component
+      const App = () => {
+        // State for application logic
+        const [activeTab, setActiveTab] = React.useState('checklist');
+        const [notification, setNotification] = React.useState({ message: '', error: false, show: false });
+        const [confirmModal, setConfirmModal] = React.useState({
+          show: false,
+          message: '',
+          onConfirm: () => {},
+        });
+        const [isLoading, setIsLoading] = React.useState(false);
+
+        // State for each section's data and UI
+        const [checklists, setChecklists] = React.useState([]);
+        const [housekeeping, setHousekeeping] = React.useState([]);
+        const [inventory, setInventory] = React.useState([]);
         
-        {/* Loading Indicator */}
-        {isLoading && (
-          <div className="text-center py-4 text-gray-500">
-            <svg className="animate-spin h-6 w-6 text-blue-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            Loading data...
-          </div>
-        )}
+        // State for forms and tables
+        const [newChecklist, setNewChecklist] = React.useState({
+          room: '',
+          date: '',
+          items: {
+            towels: 'yes',
+            toiletries: 'yes',
+            bed_linens: 'yes',
+          },
+        });
+        const [newHousekeeping, setNewHousekeeping] = React.useState({
+          room: '',
+          issue: '',
+          status: 'pending',
+          date: '',
+        });
+        const [newInventory, setNewInventory] = React.useState({
+          item: '',
+          quantity: '',
+        });
+        const [checklistSearch, setChecklistSearch] = React.useState('');
+        const [housekeepingSearch, setHousekeepingSearch] = React.useState('');
+        const [inventorySearch, setInventorySearch] = React.useState('');
 
-        {/* Room Checklist Section */}
-        {activeTab === 'checklist' && (
-          <section id="roomChecklistSection" className="p-4 bg-gray-50 rounded-lg shadow-inner">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Room Checklist</h2>
-            <form onSubmit={addChecklist} className="space-y-4 mb-6">
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <input
-                  type="text"
-                  value={newChecklist.room}
-                  onChange={(e) => setNewChecklist({ ...newChecklist, room: e.target.value })}
-                  placeholder="Room Number"
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-                <input
-                  type="date"
-                  value={newChecklist.date}
-                  onChange={(e) => setNewChecklist({ ...newChecklist, date: e.target.value })}
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              <div className="flex flex-wrap gap-4">
-                {Object.keys(newChecklist.items).map((key) => (
-                  <div key={key} className="flex items-center space-x-2">
-                    <label className="font-medium text-gray-700">{humanize(key)}:</label>
-                    <select
-                      className="px-2 py-1 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                      value={newChecklist.items[key]}
-                      onChange={(e) =>
-                        setNewChecklist({
-                          ...newChecklist,
-                          items: { ...newChecklist.items, [key]: e.target.value },
-                        })
-                      }
-                    >
-                      <option value="yes">Yes</option>
-                      <option value="no">No</option>
-                    </select>
-                  </div>
-                ))}
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Submit Checklist
-              </button>
-            </form>
+        // Notification logic
+        const showNotification = (message, isError = false) => {
+          setNotification({ message, error: isError, show: true });
+          setTimeout(() => {
+            setNotification({ message: '', error: false, show: false });
+          }, 3000);
+        };
 
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0">
-              <input
-                type="text"
-                value={checklistSearch}
-                onChange={(e) => setChecklistSearch(e.target.value)}
-                placeholder="Search by room, date, or item..."
-                className="w-full sm:flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                onClick={() => exportToExcel(filteredChecklists, 'Hotel_Room_Checklist.xlsx')}
-                className="w-full sm:w-auto sm:ml-4 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
-              >
-                Export to Excel
-              </button>
-            </div>
+        const showConfirmModal = (message, onConfirm) => {
+          setConfirmModal({ show: true, message, onConfirm });
+        };
+
+        const hideConfirmModal = () => {
+          setConfirmModal({ show: false, message: '', onConfirm: () => {} });
+        };
+
+        // --- Data Fetching and CRUD Functions ---
+        const fetchData = async () => {
+          setIsLoading(true);
+          try {
+            const checklistsRes = await fetch(`${backendURL}/checklists`);
+            const housekeepingRes = await fetch(`${backendURL}/housekeeping`);
+            const inventoryRes = await fetch(`${backendURL}/inventory`);
+
+            const checklistsData = await checklistsRes.json();
+            const housekeepingData = await housekeepingRes.json();
+            const inventoryData = await inventoryRes.json();
             
-            <div className="overflow-x-auto rounded-lg shadow-md">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 border-b">Room</th>
-                    <th className="px-4 py-2 border-b">Date</th>
-                    <th className="px-4 py-2 border-b">Items</th>
-                    <th className="px-4 py-2 border-b">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredChecklists.length > 0 ? (
-                    filteredChecklists.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="border px-4 py-2">{entry.room}</td>
-                        <td className="border px-4 py-2">{entry.date}</td>
-                        <td className="border px-4 py-2">
-                          {Object.entries(entry.items)
-                            .map(([k, v]) => `${humanize(k)}: ${humanize(v)}`)
-                            .join(', ')}
-                        </td>
-                        <td className="border px-4 py-2 text-center">
-                          <button
-                            onClick={() => deleteChecklist(entry.id)}
-                            className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="text-center py-4 text-gray-500">
-                        No checklists found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
+            setChecklists(checklistsData);
+            setHousekeeping(housekeepingData);
+            setInventory(inventoryData);
+          } catch (error) {
+            console.error('Failed to fetch data:', error);
+            showNotification('Failed to load data. Please check the backend connection.', true);
+          } finally {
+            setIsLoading(false);
+          }
+        };
 
-        {/* Housekeeping Section */}
-        {activeTab === 'housekeeping' && (
-          <section id="housekeepingSection" className="p-4 bg-gray-50 rounded-lg shadow-inner">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Housekeeping Reports</h2>
-            <form onSubmit={addHousekeeping} className="space-y-4 mb-6">
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <input
-                  type="text"
-                  value={newHousekeeping.room}
-                  onChange={(e) => setNewHousekeeping({ ...newHousekeeping, room: e.target.value })}
-                  placeholder="Room Number"
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-                <input
-                  type="text"
-                  value={newHousekeeping.issue}
-                  onChange={(e) => setNewHousekeeping({ ...newHousekeeping, issue: e.target.value })}
-                  placeholder="Issue"
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <select
-                  value={newHousekeeping.status}
-                  onChange={(e) => setNewHousekeeping({ ...newHousekeeping, status: e.target.value })}
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in-progress">In-Progress</option>
-                  <option value="resolved">Resolved</option>
-                </select>
-                <input
-                  type="date"
-                  value={newHousekeeping.date}
-                  onChange={(e) => setNewHousekeeping({ ...newHousekeeping, date: e.target.value })}
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+        React.useEffect(() => {
+          fetchData();
+        }, []);
+
+        const addChecklist = async (e) => {
+          e.preventDefault();
+          if (!newChecklist.room || !newChecklist.date) {
+            showNotification('Room and date are required.', true);
+            return;
+          }
+          try {
+            await fetch(`${backendURL}/checklists`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newChecklist),
+            });
+            showNotification('Checklist submitted successfully!');
+            setNewChecklist({
+              room: '',
+              date: '',
+              items: { towels: 'yes', toiletries: 'yes', bed_linens: 'yes' },
+            });
+            fetchData();
+          } catch (error) {
+            console.error('Failed to add checklist:', error);
+            showNotification('Failed to add checklist.', true);
+          }
+        };
+
+        const deleteChecklist = async (id) => {
+          showConfirmModal('Are you sure you want to delete this checklist?', async () => {
+            try {
+              await fetch(`${backendURL}/checklists/${id}`, { method: 'DELETE' });
+              showNotification('Checklist deleted!');
+              fetchData();
+            } catch (error) {
+              console.error('Failed to delete checklist:', error);
+              showNotification('Failed to delete checklist.', true);
+            }
+            hideConfirmModal();
+          });
+        };
+
+        const addHousekeeping = async (e) => {
+          e.preventDefault();
+          if (!newHousekeeping.room || !newHousekeeping.issue) {
+            showNotification('Room and issue are required.', true);
+            return;
+          }
+          try {
+            await fetch(`${backendURL}/housekeeping`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newHousekeeping),
+            });
+            showNotification('Housekeeping report added!');
+            setNewHousekeeping({ room: '', issue: '', status: 'pending', date: '' });
+            fetchData();
+          } catch (error) {
+            console.error('Failed to add housekeeping report:', error);
+            showNotification('Failed to add housekeeping report.', true);
+          }
+        };
+
+        const updateHousekeeping = async (id, status) => {
+          try {
+            await fetch(`${backendURL}/housekeeping/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ status }),
+            });
+            showNotification('Housekeeping status updated!');
+            fetchData();
+          } catch (error) {
+            console.error('Failed to update housekeeping status:', error);
+            showNotification('Failed to update housekeeping status.', true);
+          }
+        };
+
+        const deleteHousekeeping = async (id) => {
+          showConfirmModal('Are you sure you want to delete this report?', async () => {
+            try {
+              await fetch(`${backendURL}/housekeeping/${id}`, { method: 'DELETE' });
+              showNotification('Housekeeping report deleted!');
+              fetchData();
+            } catch (error) {
+              console.error('Failed to delete housekeeping report:', error);
+              showNotification('Failed to delete housekeeping report.', true);
+            }
+            hideConfirmModal();
+          });
+        };
+
+        const addInventory = async (e) => {
+          e.preventDefault();
+          if (!newInventory.item || !newInventory.quantity) {
+            showNotification('Item and quantity are required.', true);
+            return;
+          }
+          try {
+            await fetch(`${backendURL}/inventory`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(newInventory),
+            });
+            showNotification('Inventory item added!');
+            setNewInventory({ item: '', quantity: '' });
+            fetchData();
+          } catch (error) {
+            console.error('Failed to add inventory item:', error);
+            showNotification('Failed to add inventory item.', true);
+          }
+        };
+
+        const updateInventory = async (id, newQuantity) => {
+          try {
+            await fetch(`${backendURL}/inventory/${id}`, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ quantity: newQuantity }),
+            });
+            showNotification('Inventory updated!');
+            fetchData();
+          } catch (error) {
+            console.error('Failed to update inventory item:', error);
+            showNotification('Failed to update inventory item.', true);
+          }
+        };
+
+        const deleteInventory = async (id) => {
+          showConfirmModal('Are you sure you want to delete this item?', async () => {
+            try {
+              await fetch(`${backendURL}/inventory/${id}`, { method: 'DELETE' });
+              showNotification('Inventory item deleted!');
+              fetchData();
+            } catch (error) {
+              console.error('Failed to delete inventory item:', error);
+              showNotification('Failed to delete inventory item.', true);
+            }
+            hideConfirmModal();
+          });
+        };
+
+        // --- Export Functionality (Remains the same as it's a client-side function) ---
+        const exportToExcel = (data, fileName) => {
+          const ws = XLSX.utils.json_to_sheet(data);
+          const wb = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(wb, ws, 'Data');
+          XLSX.writeFile(wb, fileName);
+        };
+
+        // Filtered lists for search functionality
+        const filteredChecklists = checklists.filter((entry) => {
+          const haystack = `${entry.room} ${entry.date} ${JSON.stringify(entry.items)}`.toLowerCase();
+          return haystack.includes(checklistSearch.toLowerCase());
+        });
+
+        const filteredHousekeeping = housekeeping.filter((entry) => {
+          const haystack = `${entry.room} ${entry.issue} ${entry.status} ${entry.date}`.toLowerCase();
+          return haystack.includes(housekeepingSearch.toLowerCase());
+        });
+
+        const filteredInventory = inventory.filter((entry) => {
+          const haystack = `${entry.item} ${entry.quantity}`.toLowerCase();
+          return haystack.includes(inventorySearch.toLowerCase());
+        });
+
+        return (
+          <div className="min-h-screen bg-gray-100 flex flex-col items-center p-4 font-sans">
+            <div className="bg-white p-6 rounded-lg shadow-xl w-full max-w-4xl">
+              <header className="flex justify-between items-center mb-6">
+                <h1 className="text-3xl font-bold text-gray-900">Hotel Management</h1>
+                <p className="text-xs text-gray-500">API Backend: <span className="font-mono">{backendURL}</span></p>
+              </header>
+
+              {/* Notification Modal */}
+              <div
+                id="notification"
+                className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-md transition-opacity duration-300 ${notification.show ? 'opacity-100' : 'opacity-0 hidden'} ${
+                  notification.error ? 'bg-red-500' : 'bg-green-500'
+                } text-white`}
               >
-                Add Report
-              </button>
-            </form>
+                {notification.message}
+              </div>
 
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0">
-              <input
-                type="text"
-                value={housekeepingSearch}
-                onChange={(e) => setHousekeepingSearch(e.target.value)}
-                placeholder="Search by room, issue, or status..."
-                className="w-full sm:flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                onClick={() => exportToExcel(filteredHousekeeping, 'Hotel_Housekeeping_Reports.xlsx')}
-                className="w-full sm:w-auto sm:ml-4 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
-              >
-                Export to Excel
-              </button>
-            </div>
+              {/* Custom Confirmation Modal */}
+              {confirmModal.show && (
+                <div className="modal-overlay">
+                  <div className="bg-white p-6 rounded-lg shadow-xl text-center">
+                    <p className="text-lg font-semibold mb-4">{confirmModal.message}</p>
+                    <div className="flex justify-center space-x-4">
+                      <button
+                        onClick={confirmModal.onConfirm}
+                        className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition-colors"
+                      >
+                        Confirm
+                      </button>
+                      <button
+                        onClick={hideConfirmModal}
+                        className="bg-gray-300 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-400 transition-colors"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
-            <div className="overflow-x-auto rounded-lg shadow-md">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 border-b">Room</th>
-                    <th className="px-4 py-2 border-b">Issue</th>
-                    <th className="px-4 py-2 border-b">Status</th>
-                    <th className="px-4 py-2 border-b">Date</th>
-                    <th className="px-4 py-2 border-b">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredHousekeeping.length > 0 ? (
-                    filteredHousekeeping.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="border px-4 py-2">{entry.room}</td>
-                        <td className="border px-4 py-2">{entry.issue}</td>
-                        <td className="border px-4 py-2">
+              {/* Tab Navigation */}
+              <nav className="mb-8">
+                <ul className="flex justify-center space-x-2 sm:space-x-4">
+                  <li
+                    className={`cursor-pointer px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeTab === 'checklist' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('checklist')}
+                  >
+                    Room Checklist
+                  </li>
+                  <li
+                    className={`cursor-pointer px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeTab === 'housekeeping' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('housekeeping')}
+                  >
+                    Housekeeping
+                  </li>
+                  <li
+                    className={`cursor-pointer px-4 py-2 rounded-lg transition-colors duration-200 ${
+                      activeTab === 'inventory' ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                    }`}
+                    onClick={() => setActiveTab('inventory')}
+                  >
+                    Inventory
+                  </li>
+                </ul>
+              </nav>
+              
+              {/* Loading Indicator */}
+              {isLoading && (
+                <div className="text-center py-4 text-gray-500">
+                  <svg className="animate-spin h-6 w-6 text-blue-500 inline-block mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Loading data...
+                </div>
+              )}
+
+              {/* Room Checklist Section */}
+              {activeTab === 'checklist' && (
+                <section id="roomChecklistSection" className="p-4 bg-gray-50 rounded-lg shadow-inner">
+                  <h2 className="text-2xl font-bold mb-4 text-gray-800">Room Checklist</h2>
+                  <form onSubmit={addChecklist} className="space-y-4 mb-6">
+                    <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                      <input
+                        type="text"
+                        value={newChecklist.room}
+                        onChange={(e) => setNewChecklist({ ...newChecklist, room: e.target.value })}
+                        placeholder="Room Number"
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                      <input
+                        type="date"
+                        value={newChecklist.date}
+                        onChange={(e) => setNewChecklist({ ...newChecklist, date: e.target.value })}
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-wrap gap-4">
+                      {Object.keys(newChecklist.items).map((key) => (
+                        <div key={key} className="flex items-center space-x-2">
+                          <label className="font-medium text-gray-700">{humanize(key)}:</label>
                           <select
-                            value={entry.status}
-                            onChange={(e) => updateHousekeeping(entry.id, e.target.value)}
-                            className="px-2 py-1 border rounded-md"
+                            className="px-2 py-1 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            value={newChecklist.items[key]}
+                            onChange={(e) =>
+                              setNewChecklist({
+                                ...newChecklist,
+                                items: { ...newChecklist.items, [key]: e.target.value },
+                              })
+                            }
                           >
-                            <option value="pending">Pending</option>
-                            <option value="in-progress">In-Progress</option>
-                            <option value="resolved">Resolved</option>
+                            <option value="yes">Yes</option>
+                            <option value="no">No</option>
                           </select>
-                        </td>
-                        <td className="border px-4 py-2">{entry.date}</td>
-                        <td className="border px-4 py-2 text-center">
-                          <button
-                            onClick={() => deleteHousekeeping(entry.id)}
-                            className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="5" className="text-center py-4 text-gray-500">
-                        No housekeeping reports found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Submit Checklist
+                    </button>
+                  </form>
+
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0">
+                    <input
+                      type="text"
+                      value={checklistSearch}
+                      onChange={(e) => setChecklistSearch(e.target.value)}
+                      placeholder="Search by room, date, or item..."
+                      className="w-full sm:flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      onClick={() => exportToExcel(filteredChecklists, 'Hotel_Room_Checklist.xlsx')}
+                      className="w-full sm:w-auto sm:ml-4 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      Export to Excel
+                    </button>
+                  </div>
+                  
+                  <div className="overflow-x-auto rounded-lg shadow-md">
+                    <table className="min-w-full bg-white border border-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 border-b">Room</th>
+                          <th className="px-4 py-2 border-b">Date</th>
+                          <th className="px-4 py-2 border-b">Items</th>
+                          <th className="px-4 py-2 border-b">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredChecklists.length > 0 ? (
+                          filteredChecklists.map((entry) => (
+                            <tr key={entry.id}>
+                              <td className="border px-4 py-2">{entry.room}</td>
+                              <td className="border px-4 py-2">{entry.date}</td>
+                              <td className="border px-4 py-2">
+                                {Object.entries(entry.items)
+                                  .map(([k, v]) => `${humanize(k)}: ${humanize(v)}`)
+                                  .join(', ')}
+                              </td>
+                              <td className="border px-4 py-2 text-center">
+                                <button
+                                  onClick={() => deleteChecklist(entry.id)}
+                                  className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="text-center py-4 text-gray-500">
+                              No checklists found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              {/* Housekeeping Section */}
+              {activeTab === 'housekeeping' && (
+                <section id="housekeepingSection" className="p-4 bg-gray-50 rounded-lg shadow-inner">
+                  <h2 className="text-2xl font-bold mb-4 text-gray-800">Housekeeping Reports</h2>
+                  <form onSubmit={addHousekeeping} className="space-y-4 mb-6">
+                    <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                      <input
+                        type="text"
+                        value={newHousekeeping.room}
+                        onChange={(e) => setNewHousekeeping({ ...newHousekeeping, room: e.target.value })}
+                        placeholder="Room Number"
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                      <input
+                        type="text"
+                        value={newHousekeeping.issue}
+                        onChange={(e) => setNewHousekeeping({ ...newHousekeeping, issue: e.target.value })}
+                        placeholder="Issue"
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                      <select
+                        value={newHousekeeping.status}
+                        onChange={(e) => setNewHousekeeping({ ...newHousekeeping, status: e.target.value })}
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="pending">Pending</option>
+                        <option value="in-progress">In-Progress</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+                      <input
+                        type="date"
+                        value={newHousekeeping.date}
+                        onChange={(e) => setNewHousekeeping({ ...newHousekeeping, date: e.target.value })}
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Add Report
+                    </button>
+                  </form>
+
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0">
+                    <input
+                      type="text"
+                      value={housekeepingSearch}
+                      onChange={(e) => setHousekeepingSearch(e.target.value)}
+                      placeholder="Search by room, issue, or status..."
+                      className="w-full sm:flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      onClick={() => exportToExcel(filteredHousekeeping, 'Hotel_Housekeeping_Reports.xlsx')}
+                      className="w-full sm:w-auto sm:ml-4 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      Export to Excel
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-lg shadow-md">
+                    <table className="min-w-full bg-white border border-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 border-b">Room</th>
+                          <th className="px-4 py-2 border-b">Issue</th>
+                          <th className="px-4 py-2 border-b">Status</th>
+                          <th className="px-4 py-2 border-b">Date</th>
+                          <th className="px-4 py-2 border-b">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredHousekeeping.length > 0 ? (
+                          filteredHousekeeping.map((entry) => (
+                            <tr key={entry.id}>
+                              <td className="border px-4 py-2">{entry.room}</td>
+                              <td className="border px-4 py-2">{entry.issue}</td>
+                              <td className="border px-4 py-2">
+                                <select
+                                  value={entry.status}
+                                  onChange={(e) => updateHousekeeping(entry.id, e.target.value)}
+                                  className="px-2 py-1 border rounded-md"
+                                >
+                                  <option value="pending">Pending</option>
+                                  <option value="in-progress">In-Progress</option>
+                                  <option value="resolved">Resolved</option>
+                                </select>
+                              </td>
+                              <td className="border px-4 py-2">{entry.date}</td>
+                              <td className="border px-4 py-2 text-center">
+                                <button
+                                  onClick={() => deleteHousekeeping(entry.id)}
+                                  className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="5" className="text-center py-4 text-gray-500">
+                              No housekeeping reports found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
+
+              {/* Inventory Section */}
+              {activeTab === 'inventory' && (
+                <section id="inventorySection" className="p-4 bg-gray-50 rounded-lg shadow-inner">
+                  <h2 className="text-2xl font-bold mb-4 text-gray-800">Inventory Management</h2>
+                  <form onSubmit={addInventory} className="space-y-4 mb-6">
+                    <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
+                      <input
+                        type="text"
+                        value={newInventory.item}
+                        onChange={(e) => setNewInventory({ ...newInventory, item: e.target.value })}
+                        placeholder="Item Name"
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                      <input
+                        type="number"
+                        value={newInventory.quantity}
+                        onChange={(e) => setNewInventory({ ...newInventory, quantity: parseInt(e.target.value) })}
+                        placeholder="Quantity"
+                        className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
+                    >
+                      Add Inventory Item
+                    </button>
+                  </form>
+
+                  <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0">
+                    <input
+                      type="text"
+                      value={inventorySearch}
+                      onChange={(e) => setInventorySearch(e.target.value)}
+                      placeholder="Search by item name..."
+                      className="w-full sm:flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                    <button
+                      onClick={() => exportToExcel(filteredInventory, 'Hotel_Inventory.xlsx')}
+                      className="w-full sm:w-auto sm:ml-4 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
+                    >
+                      Export to Excel
+                    </button>
+                  </div>
+
+                  <div className="overflow-x-auto rounded-lg shadow-md">
+                    <table className="min-w-full bg-white border border-gray-200">
+                      <thead>
+                        <tr>
+                          <th className="px-4 py-2 border-b">Item</th>
+                          <th className="px-4 py-2 border-b">Quantity</th>
+                          <th className="px-4 py-2 border-b">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredInventory.length > 0 ? (
+                          filteredInventory.map((entry) => (
+                            <tr key={entry.id}>
+                              <td className="border px-4 py-2">{entry.item}</td>
+                              <td className="border px-4 py-2">
+                                <input
+                                  type="number"
+                                  value={entry.quantity}
+                                  onChange={(e) => updateInventory(entry.id, parseInt(e.target.value))}
+                                  className="w-24 px-2 py-1 border rounded-md"
+                                />
+                              </td>
+                              <td className="border px-4 py-2 text-center">
+                                <button
+                                  onClick={() => deleteInventory(entry.id)}
+                                  className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors"
+                                >
+                                  Delete
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="3" className="text-center py-4 text-gray-500">
+                              No inventory items found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              )}
             </div>
-          </section>
-        )}
-
-        {/* Inventory Section */}
-        {activeTab === 'inventory' && (
-          <section id="inventorySection" className="p-4 bg-gray-50 rounded-lg shadow-inner">
-            <h2 className="text-2xl font-bold mb-4 text-gray-800">Inventory Management</h2>
-            <form onSubmit={addInventory} className="space-y-4 mb-6">
-              <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4">
-                <input
-                  type="text"
-                  value={newInventory.item}
-                  onChange={(e) => setNewInventory({ ...newInventory, item: e.target.value })}
-                  placeholder="Item Name"
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-                <input
-                  type="number"
-                  value={newInventory.quantity}
-                  onChange={(e) => setNewInventory({ ...newInventory, quantity: parseInt(e.target.value) })}
-                  placeholder="Quantity"
-                  className="flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  required
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 transition-colors"
-              >
-                Add Inventory Item
-              </button>
-            </form>
-
-            <div className="flex flex-col sm:flex-row justify-between items-center mb-4 space-y-4 sm:space-y-0">
-              <input
-                type="text"
-                value={inventorySearch}
-                onChange={(e) => setInventorySearch(e.target.value)}
-                placeholder="Search by item name..."
-                className="w-full sm:flex-1 px-4 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500"
-              />
-              <button
-                onClick={() => exportToExcel(filteredInventory, 'Hotel_Inventory.xlsx')}
-                className="w-full sm:w-auto sm:ml-4 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition-colors"
-              >
-                Export to Excel
-              </button>
-            </div>
-
-            <div className="overflow-x-auto rounded-lg shadow-md">
-              <table className="min-w-full bg-white border border-gray-200">
-                <thead>
-                  <tr>
-                    <th className="px-4 py-2 border-b">Item</th>
-                    <th className="px-4 py-2 border-b">Quantity</th>
-                    <th className="px-4 py-2 border-b">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredInventory.length > 0 ? (
-                    filteredInventory.map((entry) => (
-                      <tr key={entry.id}>
-                        <td className="border px-4 py-2">{entry.item}</td>
-                        <td className="border px-4 py-2">
-                          <input
-                            type="number"
-                            value={entry.quantity}
-                            onChange={(e) => updateInventory(entry.id, parseInt(e.target.value))}
-                            className="w-24 px-2 py-1 border rounded-md"
-                          />
-                        </td>
-                        <td className="border px-4 py-2 text-center">
-                          <button
-                            onClick={() => deleteInventory(entry.id)}
-                            className="bg-red-500 text-white px-3 py-1 rounded-md hover:bg-red-600 transition-colors"
-                          >
-                            Delete
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="3" className="text-center py-4 text-gray-500">
-                        No inventory items found.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </section>
-        )}
-      </div>
-    </div>
-  );
-};
-
-export default App;
+          </div>
+        );
+      };
+      
+      ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>
