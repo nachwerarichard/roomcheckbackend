@@ -3,54 +3,53 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Hotel Management System</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <link rel="stylesheet" href="styles.css" />
+    <title>Hotel Management System</title>
   </head>
-  <body>
-    <div id="mainApp" class="container-wrapper">
-      <aside id="sidebar" class="sidebar">
-        <h1 class="sidebar-title">Room Management</h1>
-        <nav class="sidebar-nav">
+  <body class="body-style">
+    <div id="mainApp" class="main-app">
+      <header class="main-header">
+        <div class="header-content-left">
+          <h1 class="header-title">Room Management</h1>
+        </div>
+        <nav class="main-nav">
           <button
             id="tabChecklist"
-            class="tab-button active"
-            data-section="roomChecklistSection"
+            class="tab-button active-tab"
+            onclick="showSection('roomChecklistSection')"
           >
             Checklist
           </button>
           <button
             id="tabHousekeeping"
-            class="tab-button"
-            data-section="housekeepingReportSection"
+            class="tab-button default-tab"
+            onclick="showSection('housekeepingReportSection')"
           >
             Reports
           </button>
           <button
             id="tabInventory"
-            class="tab-button"
-            data-section="inventorySection"
+            class="tab-button default-tab"
+            onclick="showSection('inventorySection')"
           >
             Inventory
           </button>
         </nav>
-      </aside>
-
-      <main class="main-content">
-        <header class="header">
-          <h2 class="header-title-mobile">Room Management</h2>
-          <button id="menuToggle" class="menu-toggle">
-            &#9776;
-          </button>
-        </header>
-
-        <section id="roomChecklistSection" class="tab-content active-content">
-          <div class="card-large">
-            <h2 class="card-title-center">Hotel Room Checklist</h2>
-            <form id="checklistForm" class="form-grid">
+      </header>
+      <main class="main-content-area">
+        <div id="roomChecklistSection" class="tab-content">
+          <div id="checklistFormContainer" class="card-container">
+            <h2 class="card-title text-center">Hotel Room Checklist</h2>
+            <form id="checklistForm" class="form-layout">
               <div>
                 <label for="room" class="form-label">Room Number:</label>
-                <select id="room" name="room" required class="form-input">
+                <select
+                  id="room"
+                  name="room"
+                  required
+                  class="form-input"
+                >
                   <option value="">-- Select a Room --</option>
                   <option value="101">Room 101</option>
                   <option value="102">Room 102</option>
@@ -74,7 +73,6 @@
                   <option value="120">Room 120</option>
                 </select>
               </div>
-
               <div>
                 <label for="date" class="form-label">Date:</label>
                 <input
@@ -85,10 +83,9 @@
                   class="form-input"
                 />
               </div>
-
-              <div class="radio-grid">
-                <div class="radio-group">
-                  <p class="form-label">Towel:</p>
+              <div class="radio-group-grid">
+                <div>
+                  <p class="radio-title">Towel:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -111,8 +108,8 @@
                   >
                 </div>
 
-                <div class="radio-group">
-                  <p class="form-label">Soap:</p>
+                <div>
+                  <p class="radio-title">Soap:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -135,8 +132,8 @@
                   >
                 </div>
 
-                <div class="radio-group">
-                  <p class="form-label">Door mat:</p>
+                <div>
+                  <p class="radio-title">Door mat:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -159,8 +156,8 @@
                   >
                 </div>
 
-                <div class="radio-group">
-                  <p class="form-label">Sandals:</p>
+                <div>
+                  <p class="radio-title">Sandals:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -183,8 +180,8 @@
                   >
                 </div>
 
-                <div class="radio-group">
-                  <p class="form-label">Toliet paper:</p>
+                <div>
+                  <p class="radio-title">Toilet paper:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -207,8 +204,8 @@
                   >
                 </div>
 
-                <div class="radio-group">
-                  <p class="form-label">Trash can:</p>
+                <div>
+                  <p class="radio-title">Trash can:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -230,9 +227,9 @@
                     No</label
                   >
                 </div>
-                
-                <div class="radio-group">
-                  <p class="form-label">Remote:</p>
+
+                <div>
+                  <p class="radio-title">Remote:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -254,9 +251,9 @@
                     No</label
                   >
                 </div>
-                
-                <div class="radio-group">
-                  <p class="form-label">TV:</p>
+
+                <div>
+                  <p class="radio-title">TV:</p>
                   <label class="radio-label"
                     ><input
                       type="radio"
@@ -279,17 +276,15 @@
                   >
                 </div>
               </div>
-
               <button type="submit" class="submit-button green-button">
                 Submit Checklist
               </button>
             </form>
-            <p id="message" class="form-message-success"></p>
+            <p id="message" class="form-message"></p>
           </div>
-
-          <div class="card-large mt-8">
+          <div id="checklistTableContainer" class="card-container margin-top-large">
             <h2 class="card-title">Room Checklists</h2>
-            <div class="filter-controls">
+            <div class="filter-export-row">
               <input
                 type="search"
                 id="searchInput"
@@ -311,9 +306,9 @@
                 </button>
               </div>
             </div>
-            <div class="table-wrapper">
+            <div class="table-responsive">
               <table id="checklistTable" class="data-table">
-                <thead>
+                <thead class="table-header-bg">
                   <tr>
                     <th class="table-header">Room</th>
                     <th class="table-header">Date</th>
@@ -325,26 +320,21 @@
               </table>
             </div>
             <div class="pagination-controls">
-              <button id="prevBtn" class="pagination-button gray-button">
-                Prev
-              </button>
-              <span id="pageInfo" class="pagination-info"></span>
-              <button id="nextBtn" class="pagination-button gray-button">
-                Next
-              </button>
+              <button id="prevBtn" class="pagination-button">Prev</button>
+              <span id="pageInfo" class="page-info"></span>
+              <button id="nextBtn" class="pagination-button">Next</button>
             </div>
           </div>
-
-          <div class="card-large mt-8">
+          <div id="missingItemsSummaryContainer" class="card-container margin-top-large">
             <h3 class="card-title">Missing Items Summary</h3>
-            <div class="filter-controls-small">
+            <div class="filter-row">
               <label for="missingItemsDateFilter" class="form-label"
                 >Filter by Date:</label
               >
               <input
                 type="date"
                 id="missingItemsDateFilter"
-                class="form-input-small"
+                class="form-input filter-date-input"
               />
               <button
                 id="clearMissingItemsDateFilter"
@@ -353,14 +343,15 @@
                 Clear Filter
               </button>
             </div>
-            <div id="missingItemsSummary" class="summary-area"></div>
+            <div id="missingItemsSummary" class="margin-top-small"></div>
           </div>
-        </section>
-
-        <section id="housekeepingReportSection" class="tab-content hidden">
-          <div class="card-large">
-            <h2 class="card-title-center">Housekeeping Room Status Report</h2>
-            <form id="statusReportForm" class="form-grid-single">
+          </div>
+        <div id="housekeepingReportSection" class="tab-content hidden">
+          <div id="statusReportFormContainer" class="card-container">
+            <h2 class="card-title text-center">
+              Housekeeping Room Status Report
+            </h2>
+            <form id="statusReportForm" class="form-layout">
               <div>
                 <label for="reportRoom" class="form-label">Room Name:</label>
                 <input
@@ -372,7 +363,6 @@
                   placeholder="e.g., 101, Suite A"
                 />
               </div>
-
               <div>
                 <label for="reportCategory" class="form-label">Category:</label>
                 <select
@@ -388,7 +378,6 @@
                   <option value="juniorsuite">Junior Suite</option>
                 </select>
               </div>
-
               <div>
                 <label for="reportStatus" class="form-label">Status:</label>
                 <select
@@ -407,7 +396,6 @@
                   <option value="out_of_service">Out of Service</option>
                 </select>
               </div>
-
               <div>
                 <label for="reportRemarks" class="form-label">Remarks:</label>
                 <textarea
@@ -418,7 +406,6 @@
                   placeholder="Any additional notes..."
                 ></textarea>
               </div>
-
               <div>
                 <label for="reportDateTime" class="form-label"
                   >Date and Time:</label
@@ -431,25 +418,23 @@
                   class="form-input"
                 />
               </div>
-
               <button type="submit" class="submit-button blue-button">
                 Submit Report
               </button>
             </form>
-            <p id="statusMessage" class="form-message-success"></p>
+            <p id="statusMessage" class="form-message"></p>
           </div>
-
-          <div class="card-large mt-8">
+          <div id="statusReportTableContainer" class="card-container margin-top-large">
             <h2 class="card-title">Housekeeping Reports</h2>
-            <div class="filter-controls">
-              <div class="date-filter-group">
+            <div class="filter-export-row">
+              <div class="filter-date-group">
                 <label for="filterDate" class="form-label"
                   >Filter by Date:</label
                 >
                 <input
                   type="date"
                   id="filterDate"
-                  class="form-input-small"
+                  class="form-input filter-date-input"
                 />
               </div>
               <div class="button-group">
@@ -479,9 +464,9 @@
                 </button>
               </div>
             </div>
-            <div class="table-wrapper">
+            <div class="table-responsive">
               <table id="statusReportTable" class="data-table">
-                <thead>
+                <thead class="table-header-bg">
                   <tr>
                     <th class="table-header">Room</th>
                     <th class="table-header">Category</th>
@@ -495,12 +480,11 @@
               </table>
             </div>
           </div>
-        </section>
-
-        <section id="inventorySection" class="tab-content hidden">
-          <div class="card-large">
-            <h2 class="card-title-center">Inventory Management</h2>
-            <form id="inventoryForm" class="form-grid-single">
+          </div>
+        <div id="inventorySection" class="tab-content hidden">
+          <div id="inventoryFormContainer" class="card-container">
+            <h2 class="card-title text-center">Inventory Management</h2>
+            <form id="inventoryForm" class="form-layout">
               <div>
                 <label for="inventoryItem" class="form-label">Item Name:</label>
                 <input
@@ -512,7 +496,6 @@
                   placeholder="e.g., Shampoo, Soap, Towels"
                 />
               </div>
-
               <div>
                 <label for="inventoryQuantity" class="form-label"
                   >Quantity:</label
@@ -527,7 +510,6 @@
                   min="1"
                 />
               </div>
-
               <div>
                 <label for="lowStockLevel" class="form-label"
                   >Low Stock Notification Level:</label
@@ -541,7 +523,6 @@
                   min="0"
                 />
               </div>
-
               <div>
                 <label for="inventoryAction" class="form-label">Action:</label>
                 <select
@@ -554,17 +535,15 @@
                   <option value="use">Use from Stock</option>
                 </select>
               </div>
-
               <button type="submit" class="submit-button indigo-button">
                 Update Inventory
               </button>
             </form>
-            <p id="inventoryMessage" class="form-message-success"></p>
+            <p id="inventoryMessage" class="form-message"></p>
           </div>
-
-          <div class="card-large mt-8">
+          <div id="inventoryTableContainer" class="card-container margin-top-large">
             <h3 class="card-title">Current Stock Levels</h3>
-            <div class="filter-controls">
+            <div class="filter-export-row">
               <input
                 type="search"
                 id="inventorySearch"
@@ -587,16 +566,16 @@
               </div>
             </div>
 
-            <div class="snapshot-controls">
-              <h3 class="card-title-small">Inventory Snapshot</h3>
-              <div class="snapshot-filter-group">
+            <div class="snapshot-controls margin-top-large margin-bottom-small">
+              <h3 class="card-title-secondary">Inventory Snapshot</h3>
+              <div class="filter-date-group">
                 <label for="snapshotDate" class="form-label"
                   >Select Date:</label
                 >
                 <input
                   type="date"
                   id="snapshotDate"
-                  class="form-input-small"
+                  class="form-input date-input"
                 />
                 <button
                   onclick="getInventorySnapshot()"
@@ -607,9 +586,9 @@
               </div>
             </div>
 
-            <div class="table-wrapper">
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
               <table id="inventoryTable" class="data-table">
-                <thead>
+                <thead class="table-header-bg">
                   <tr>
                     <th class="table-header">Item Name</th>
                     <th class="table-header">Stock Level</th>
@@ -621,64 +600,57 @@
               </table>
             </div>
           </div>
-        </section>
-      </main>
+          </div>
+        </main>
     </div>
 
     <script>
-      // Function to switch active sections
-      function switchTab(sectionId) {
-        // Hide all sections
-        document.querySelectorAll('.tab-content').forEach(section => {
-          section.classList.remove('active-content');
-          section.classList.add('hidden');
+      function showSection(sectionId) {
+        // Hide all main sections
+        document.getElementById('roomChecklistSection').classList.add('hidden');
+        document.getElementById('housekeepingReportSection').classList.add('hidden');
+        document.getElementById('inventorySection').classList.add('hidden');
+
+        // Show the requested section
+        document.getElementById(sectionId).classList.remove('hidden');
+
+        // Update active tab styling
+        document.querySelectorAll('.tab-button').forEach(btn => {
+            btn.classList.remove('active-tab');
+            btn.classList.add('default-tab');
         });
+        document.getElementById('tab' + sectionId.replace('Section', '')).classList.add('active-tab');
+        document.getElementById('tab' + sectionId.replace('Section', '')).classList.remove('default-tab');
 
-        // Deactivate all buttons
-        document.querySelectorAll('.tab-button').forEach(button => {
-          button.classList.remove('active');
+        // Automatically show the first internal div in the newly displayed section
+        // and hide the others (for the next requested feature)
+        let internalDivs = document.querySelectorAll('#' + sectionId + ' > .card-container');
+        internalDivs.forEach((div, index) => {
+          if (index === 0) {
+            div.classList.remove('hidden');
+          } else {
+            div.classList.add('hidden');
+          }
         });
-
-        // Show the selected section and activate the button
-        const activeSection = document.getElementById(sectionId);
-        if (activeSection) {
-          activeSection.classList.add('active-content');
-          activeSection.classList.remove('hidden');
-        }
-
-        const activeButton = document.querySelector(`[data-section="${sectionId}"]`);
-        if (activeButton) {
-          activeButton.classList.add('active');
-        }
-
-        // Hide sidebar on mobile after clicking a link
-        if (window.innerWidth < 640) {
-          document.getElementById('sidebar').classList.add('hidden-mobile');
-          document.getElementById('menuToggle').classList.remove('active');
-        }
       }
 
-      // Add event listeners to buttons
+      // Initialize the view on load (optional: the HTML defaults to Checklist being visible)
       document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('.tab-button').forEach(button => {
-          button.addEventListener('click', () => {
-            const sectionId = button.getAttribute('data-section');
-            switchTab(sectionId);
-          });
-        });
-
-        // Mobile menu toggle logic
-        const menuToggle = document.getElementById('menuToggle');
-        const sidebar = document.getElementById('sidebar');
-
-        menuToggle.addEventListener('click', () => {
-          sidebar.classList.toggle('hidden-mobile');
-          menuToggle.classList.toggle('active');
-        });
-        
-        // Initial tab activation (Checklist by default)
-        switchTab('roomChecklistSection');
+        showSection('roomChecklistSection');
       });
+      
+      // Function for internal div switching (to be called by your own buttons)
+      function showInternalDiv(sectionId, divIdToShow) {
+          // Hide all divs inside the main section
+          document.querySelectorAll('#' + sectionId + ' > .card-container').forEach(div => {
+              div.classList.add('hidden');
+          });
+
+          // Show the requested internal div
+          document.getElementById(divIdToShow).classList.remove('hidden');
+      }
+
+      // You would need to add buttons inside each section to call `showInternalDiv('sectionId', 'divId')`
     </script>
     <script src="script3.js"></script>
   </body>
