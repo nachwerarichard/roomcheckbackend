@@ -315,7 +315,7 @@
             <form id="hotelChecklistForm" class="form-container">
                 <div>
                     <label for="room">Room Number:</label>
-                    <select id="room" name="room" required>
+                    <select id="room" name="room" style="width: 180px;" required>
                         <option value="">-- Select a Room --</option>
                         <option value="101">Room 101</option>
                         <option value="102">Room 102</option>
@@ -325,7 +325,7 @@
                 </div>
                 <div>
                     <label for="date">Date:</label>
-                    <input type="date" id="date" name="date" required>
+                    <input type="date" id="date"  style="width: 180px;" name="date" required>
                 </div>
 
                 <div class="checklist-group">
@@ -383,7 +383,7 @@
         <div id="checklistsTable" class="tab-content">
             <h2>Room Checklists Table</h2>
             <div style="display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 15px;">
-                <input type="search" id="searchInput" placeholder="Search room or date..." style="flex-grow: 1;">
+                <input type="search" id="searchInput" style="width: 180px;" placeholder="Search room or date..." style="flex-grow: 1;">
                 <button onclick="exportToExcel()" style="background-color: #ffc300; color: #1e3d59;"><i class="fa-solid fa-file-export"></i> Export</button>
                 <button onclick="printChecklists()" style="background-color: #3498db;"><i class="fa-solid fa-print"></i> Print</button>
             </div>
@@ -414,7 +414,7 @@
             <h2>Missing Items Summary</h2>
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 15px; margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px;">
                 <label for="missingItemsDateFilter" style="font-weight: 600; color: #1e3d59;">Filter by Date:</label>
-                <input type="date" id="missingItemsDateFilter" style="flex-grow: 1; max-width: 250px;">
+                <input type="date" style="width: 180px;" id="missingItemsDateFilter" style="flex-grow: 1; max-width: 250px;">
                 <button id="clearMissingItemsDateFilter" style="background-color: #95a5a6; color: white; padding: 10px 15px;"><i class="fa-solid fa-xmark"></i> Clear Filter</button>
             </div>
             <div id="missingItemsSummary">
