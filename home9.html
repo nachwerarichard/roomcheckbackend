@@ -5,34 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="styles.css"/>
+    <link rel="stylesheet" href="styles.css" />
     <title>Hotel Management System</title>
+    <style>
+      /* Tailwind doesn't have a direct 'show on parent hover' class for nested lists, 
+         so we add a small custom CSS rule here for the sub-menu dropdown */
+      .nav-item:hover .sub-menu-dropdown {
+        display: block;
+      }
+    </style>
   </head>
-  <body class="bg-gray-50 text-gray-800 antialiased flex"> 
-    
+  <body class="bg-gray-50 text-gray-800 antialiased flex">
     <aside class="w-64 bg-white shadow-xl h-screen sticky top-0 p-6 flex flex-col">
       <header class="mb-8">
         <h1 class="text-2xl font-extrabold text-gray-900 border-b pb-4">
           Room Management
         </h1>
       </header>
-      
+
       <nav class="flex flex-col gap-2">
         <button
           id="tabChecklist"
-          class="tab-button text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-white bg-blue-600 hover:bg-blue-700"
+          class="tab-button nav-item text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-white bg-blue-600 hover:bg-blue-700"
+          data-target-tab="roomChecklistSection"
         >
           Checklist
         </button>
-        <button
-          id="tabHousekeeping"
-          class="tab-button text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-gray-700 hover:bg-gray-200"
-        >
-          Reports
-        </button>
+
+        <div class="relative nav-item group">
+          <button
+            id="tabReports"
+            class="tab-button w-full text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-gray-700 hover:bg-gray-200"
+          >
+            Reports ▼
+          </button>
+          <div
+            class="sub-menu-dropdown hidden absolute left-0 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg z-10"
+          >
+            <button
+              id="subTabReportForm"
+              class="sub-tab-button block w-full text-left py-2 px-4 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+              data-target-section="reportFormSubSection"
+            >
+              Submit New Report
+            </button>
+            <button
+              id="subTabViewReports"
+              class="sub-tab-button block w-full text-left py-2 px-4 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-600"
+              data-target-section="reportsViewSubSection"
+            >
+              View Housekeeping Reports
+            </button>
+          </div>
+        </div>
+
         <button
           id="tabInventory"
-          class="tab-button text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-gray-700 hover:bg-gray-200"
+          class="tab-button nav-item text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-gray-700 hover:bg-gray-200"
+          data-target-tab="inventorySection"
         >
           Inventory
         </button>
@@ -40,9 +70,7 @@
     </aside>
 
     <div id="mainApp" class="flex-1 p-4 sm:p-6 max-w-5xl mx-auto overflow-y-auto">
-      
       <main class="space-y-8">
-        
         <div id="roomChecklistSection" class="tab-content">
           <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
             <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">
@@ -50,9 +78,7 @@
             </h2>
             <form id="checklistForm" class="space-y-5">
               <div>
-                <label for="room" class="block font-medium text-gray-700"
-                  >Room Number:</label
-                >
+                <label for="room" class="block font-medium text-gray-700">Room Number:</label>
                 <select
                   id="room"
                   name="room"
@@ -61,231 +87,33 @@
                 >
                   <option value="">-- Select a Room --</option>
                   <option value="101">Room 101</option>
-                  <option value="102">Room 102</option>
-                  <option value="103">Room 103</option>
-                  <option value="104">Room 104</option>
-                  <option value="105">Room 105</option>
-                  <option value="106">Room 106</option>
-                  <option value="107">Room 107</option>
-                  <option value="108">Room 108</option>
-                  <option value="109">Room 109</option>
-                  <option value="110">Room 110</option>
-                  <option value="111">Room 111</option>
-                  <option value="112">Room 112</option>
-                  <option value="113">Room 113</option>
-                  <option value="114">Room 114</option>
-                  <option value="115">Room 115</option>
-                  <option value="116">Room 116</option>
-                  <option value="117">Room 117</option>
-                  <option value="118">Room 118</option>
-                  <option value="119">Room 119</option>
-                  <option value="120">Room 120</option>
-                </select>
-              </div>
-              <div>
-                <label for="date" class="block font-medium text-gray-700"
-                  >Date:</label
-                >
-                <input
-                  type="date"
-                  id="date"
-                  name="date"
-                  required
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
+                  </select>
               </div>
               <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                <p class="font-medium text-gray-700 mb-2">Towel:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="towels"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="towels"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-
-              <div>
-                <p class="font-medium text-gray-700 mb-2">Soap:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="soap"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="soap"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-
-              <div>
-                <p class="font-medium text-gray-700 mb-2">Door mat:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="door mat"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="door mat"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-
-              <div>
-                <p class="font-medium text-gray-700 mb-2">Sandals:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="sandals"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="sandals"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-              
-              <div>
-                <p class="font-medium text-gray-700 mb-2">Toliet paper:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="toilet paper"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="toilet paper"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-
-              
-              <div>
-                <p class="font-medium text-gray-700 mb-2">Trash can:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="trash can"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="trash can"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-                <div>
-                <p class="font-medium text-gray-700 mb-2">Remote:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="remote"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="remote"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-                <div>
-                <p class="font-medium text-gray-700 mb-2">TV:</p>
-                <label class="mr-4 inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="tv"
-                    value="yes"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  Yes</label
-                >
-                <label class="inline-flex items-center"
-                  ><input
-                    type="radio"
-                    name="tv"
-                    value="no"
-                    required
-                    class="mr-2 text-blue-600 focus:ring-blue-500"
-                  />
-                  No</label
-                >
-              </div>
-              </div>
+                  <p class="font-medium text-gray-700 mb-2">Towel:</p>
+                  <label class="mr-4 inline-flex items-center"
+                    ><input
+                      type="radio"
+                      name="towels"
+                      value="yes"
+                      required
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    Yes</label
+                  >
+                  <label class="inline-flex items-center"
+                    ><input
+                      type="radio"
+                      name="towels"
+                      value="no"
+                      required
+                      class="mr-2 text-blue-600 focus:ring-blue-500"
+                    />
+                    No</label
+                  >
+                </div>
+                </div>
               <button
                 type="submit"
                 class="w-full bg-green-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-green-700 transition duration-300 ease-in-out shadow-md"
@@ -294,128 +122,26 @@
               </button>
             </form>
 
-            <p
-              id="message"
-              class="text-center text-green-600 mt-4 text-lg font-medium"
-            ></p>
+            <p id="message" class="text-center text-green-600 mt-4 text-lg font-medium"></p>
           </div>
-
           <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mt-8">
-            <h2 class="text-2xl font-bold mb-4 text-gray-800">
-              Room Checklists
-            </h2>
-            <div
-              class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6"
-            >
-              <input
-                type="search"
-                id="searchInput"
-                placeholder="Search room or date..."
-                class="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <div class="flex gap-2 w-full sm:w-auto">
-                <button
-                  onclick="exportToExcel()"
-                  class="flex-1 sm:flex-none bg-yellow-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
-                >
-                  Export
-                </button>
-                <button
-                  onclick="printChecklists()"
-                  class="flex-1 sm:flex-none bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-600 transition"
-                >
-                  Print
-                </button>
-              </div>
+            <h2 class="text-2xl font-bold mb-4 text-gray-800">Room Checklists</h2>
             </div>
-            <div class="overflow-x-auto rounded-lg border border-gray-200">
-              <table
-                id="checklistTable"
-                class="min-w-full table-auto border-collapse"
-              >
-                <thead class="bg-gray-100">
-                  <tr>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Room
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Date
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Items
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  id="checklistBody"
-                  class="bg-white divide-y divide-gray-200 text-sm"
-                ></tbody>
-              </table>
-            </div>
-            <div class="flex justify-center items-center gap-4 mt-6">
-              <button
-                id="prevBtn"
-                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-              >
-                Prev
-              </button>
-              <span id="pageInfo" class="font-medium text-gray-700"></span>
-              <button
-                id="nextBtn"
-                class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-
           <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mt-8">
             <h3 class="text-2xl font-bold mb-4 text-gray-800">
               Missing Items Summary
             </h3>
-            <div
-              class="flex flex-col sm:flex-row items-center gap-4 mb-4 justify-between"
-            >
-              <label for="missingItemsDateFilter" class="font-medium text-gray-700"
-                >Filter by Date:</label
-              >
-              <input
-                type="date"
-                id="missingItemsDateFilter"
-                class="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <button
-                id="clearMissingItemsDateFilter"
-                class="w-full sm:w-auto bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-              >
-                Clear Filter
-              </button>
             </div>
-            <div id="missingItemsSummary" class="mt-4"></div>
-          </div>
         </div>
 
         <div id="housekeepingReportSection" class="tab-content hidden">
-          <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
+          <div id="reportFormSubSection" class="sub-tab-content bg-white p-6 md:p-8 rounded-xl shadow-lg">
             <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">
               Housekeeping Room Status Report
             </h2>
             <form id="statusReportForm" class="space-y-5">
               <div>
-                <label for="reportRoom" class="block font-medium text-gray-700"
-                  >Room Name:</label
-                >
+                <label for="reportRoom" class="block font-medium text-gray-700">Room Name:</label>
                 <input
                   type="text"
                   id="reportRoom"
@@ -423,75 +149,6 @@
                   required
                   class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   placeholder="e.g., 101, Suite A"
-                />
-              </div>
-              <div>
-                <label
-                  for="reportCategory"
-                  class="block font-medium text-gray-700"
-                  >Category:</label
-                >
-                <select
-                  id="reportCategory"
-                  name="category"
-                  required
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">-- Select Category --</option>
-                  <option value="deluxe1">Deluxe 1</option>
-                  <option value="deluxe2">Deluxe 2</option>
-                  <option value="deluxetwin">Deluxe Twin</option>
-                  <option value="juniorsuite">Junior Suite</option>
-                </select>
-              </div>
-              <div>
-                <label
-                  for="reportStatus"
-                  class="block font-medium text-gray-700"
-                  >Status:</label
-                >
-                <select
-                  id="reportStatus"
-                  name="status"
-                  required
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="">-- Select Status --</option>
-                  <option value="arrival">Arrival</option>
-                  <option value="occupied">Occupied</option>
-                  <option value="departure">Departure</option>
-                  <option value="vacant_ready">Vacant Ready</option>
-                  <option value="vacant_not_ready">Vacant but not Ready</option>
-                  <option value="out_of_order">Out of Order</option>
-                  <option value="out_of_service">Out of Service</option>
-                </select>
-              </div>
-              <div>
-                <label
-                  for="reportRemarks"
-                  class="block font-medium text-gray-700"
-                  >Remarks:</label
-                >
-                <textarea
-                  id="reportRemarks"
-                  name="remarks"
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  rows="3"
-                  placeholder="Any additional notes..."
-                ></textarea>
-              </div>
-              <div>
-                <label
-                  for="reportDateTime"
-                  class="block font-medium text-gray-700"
-                  >Date and Time:</label
-                >
-                <input
-                  type="datetime-local"
-                  id="reportDateTime"
-                  name="dateTime"
-                  required
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
               <button
@@ -502,97 +159,22 @@
               </button>
             </form>
 
-            <p
-              id="statusMessage"
-              class="text-center text-green-600 mt-4 text-lg font-medium"
-            ></p>
+            <p id="statusMessage" class="text-center text-green-600 mt-4 text-lg font-medium"></p>
           </div>
 
-          <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mt-8">
+          <div id="reportsViewSubSection" class="sub-tab-content bg-white p-6 md:p-8 rounded-xl shadow-lg mt-8 hidden">
             <h2 class="text-2xl font-bold mb-4 text-gray-800">
-              Housekeeping Reports
+              Housekeeping Reports View
             </h2>
             <div
               class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6"
             >
-              <div
-                class="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto"
-              >
-                <label for="filterDate" class="font-medium text-gray-700"
-                  >Filter by Date:</label
-                >
-                <input
-                  type="date"
-                  id="filterDate"
-                  class="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                />
               </div>
-              <div class="flex gap-2 w-full sm:w-auto">
-                <button
-                  onclick="filterStatusReportsByDate()"
-                  class="flex-1 sm:flex-none bg-purple-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-purple-700 transition"
-                >
-                  Apply
-                </button>
-                <button
-                  onclick="clearStatusDateFilter()"
-                  class="flex-1 sm:flex-none bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-                >
-                  Clear
-                </button>
-                <button
-                  onclick="exportStatusReportsToExcel()"
-                  class="flex-1 sm:flex-none bg-yellow-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
-                >
-                  Export
-                </button>
-                <button
-                  onclick="printStatusReports()"
-                  class="flex-1 sm:flex-none bg-blue-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-600 transition"
-                >
-                  Print
-                </button>
-              </div>
-            </div>
             <div class="overflow-x-auto rounded-lg border border-gray-200">
               <table
                 id="statusReportTable"
                 class="min-w-full table-auto border-collapse"
               >
-                <thead class="bg-gray-100">
-                  <tr>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Room
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Category
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Status
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Remarks
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Date & Time
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
                 <tbody
                   id="statusReportBody"
                   class="bg-white divide-y divide-gray-200 text-sm"
@@ -603,175 +185,7 @@
         </div>
 
         <div id="inventorySection" class="tab-content hidden">
-          <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center text-gray-800">
-              Inventory Management
-            </h2>
-            <form id="inventoryForm" class="space-y-5">
-              <div>
-                <label
-                  for="inventoryItem"
-                  class="block font-medium text-gray-700"
-                  >Item Name:</label
-                >
-                <input
-                  type="text"
-                  id="inventoryItem"
-                  name="item"
-                  required
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., Shampoo, Soap, Towels"
-                />
-              </div>
-              <div>
-                <label
-                  for="inventoryQuantity"
-                  class="block font-medium text-gray-700"
-                  >Quantity:</label
-                >
-                <input
-                  type="number"
-                  id="inventoryQuantity"
-                  name="quantity"
-                  required
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., 50"
-                  min="1"
-                />
-              </div>
-              <div>
-                <label
-                  for="lowStockLevel"
-                  class="block font-medium text-gray-700"
-                  >Low Stock Notification Level:</label
-                >
-                <input
-                  type="number"
-                  id="lowStockLevel"
-                  name="lowStockLevel"
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., 10"
-                  min="0"
-                />
-              </div>
-              <div>
-                <label
-                  for="inventoryAction"
-                  class="block font-medium text-gray-700"
-                  >Action:</label
-                >
-                <select
-                  id="inventoryAction"
-                  name="action"
-                  required
-                  class="w-full mt-1 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="add">Add to Stock</option>
-                  <option value="use">Use from Stock</option>
-                </select>
-              </div>
-              <button
-                type="submit"
-                class="w-full bg-indigo-600 text-white font-semibold px-6 py-3 rounded-lg hover:bg-indigo-700 transition duration-300 ease-in-out shadow-md"
-              >
-                Update Inventory
-              </button>
-            </form>
-            <p
-              id="inventoryMessage"
-              class="text-center text-green-600 mt-4 text-lg font-medium"
-            ></p>
           </div>
-
-          <div class="bg-white p-6 md:p-8 rounded-xl shadow-lg mt-8">
-            <h3 class="text-2xl font-bold mb-4 text-gray-800">
-              Current Stock Levels
-            </h3>
-            <div
-              class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6"
-            >
-              <input
-                type="search"
-                id="inventorySearch"
-                placeholder="Search item..."
-                class="flex-1 w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-              />
-              <div class="flex gap-2 w-full sm:w-auto">
-                <button
-                  onclick="loadInventory()"
-                  class="flex-1 sm:flex-none bg-gray-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-gray-600 transition"
-                >
-                  Refresh
-                </button>
-                <button
-                  onclick="exportInventoryToExcel()"
-                  class="flex-1 sm:flex-none bg-yellow-500 text-white font-semibold px-4 py-2 rounded-lg hover:bg-yellow-600 transition"
-                >
-                  Export
-                </button>
-              </div>
-            </div>
-
-            <div
-              class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6 mt-8"
-            >
-              <h3 class="text-2xl font-bold text-gray-800">Inventory Snapshot</h3>
-              <div class="flex flex-col sm:flex-row items-center gap-4">
-                <label for="snapshotDate" class="font-medium text-gray-700"
-                  >Select Date:</label
-                >
-                <input
-                  type="date"
-                  id="snapshotDate"
-                  class="px-4 py-2 border border-gray-300 rounded-lg"
-                />
-                <button
-                  onclick="getInventorySnapshot()"
-                  class="w-full sm:w-auto bg-blue-600 text-white font-semibold px-4 py-2 rounded-lg hover:bg-blue-700 transition"
-                >
-                  View Snapshot
-                </button>
-              </div>
-            </div>
-
-            <div class="overflow-x-auto rounded-lg border border-gray-200">
-              <table
-                id="inventoryTable"
-                class="min-w-full table-auto border-collapse"
-              >
-                <thead class="bg-gray-100">
-                  <tr>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Item Name
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Stock Level
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                    >
-                      Low Stock Threshold
-                    </th>
-                    <th
-                      class="border px-4 py-3 text-left text-sm font-semibold text-gray-600 uppercase tracking-wider"
-                      id="actionsHeader"
-                    >
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody
-                  id="inventoryBody"
-                  class="bg-white divide-y divide-gray-200 text-sm"
-                ></tbody>
-              </table>
-            </div>
-          </div>
-        </div>
       </main>
     </div>
 
