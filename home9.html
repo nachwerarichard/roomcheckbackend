@@ -152,28 +152,7 @@
         #statusReportForm button[type="submit"]:hover {
             background-color: #2980b9;
         }
-
-        #inventoryForm button[type="submit"] {
-            background-color: #9b59b6; /* Indigo/Purple */
-        }
-        #inventoryForm button[type="submit"]:hover {
-            background-color: #8e44ad;
-        }
         
-        /* Combined Inventory Controls Style */
-        .inventory-controls {
-            display: flex;
-            flex-wrap: wrap;
-            align-items: center;
-            justify-content: space-between;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-        .inventory-controls input[type="date"] {
-            flex-grow: 1;
-            width: auto;
-        }
-
         /* Radio button alignment fix */
         label.radio-label {
             display: inline-flex;
@@ -207,15 +186,6 @@
         <div id="reportsSubmenu" class="submenu">
             <button onclick="showSection('reportForm')">Status Report Form</button>
             <button onclick="showSection('reportsTable')">Status Reports Table</button>
-        </div>
-
-        <div class="nav-item" onclick="toggleMenu('inventorySubmenu', this)">
-            <span>Inventory</span>
-            <i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div id="inventorySubmenu" class="submenu">
-            <button onclick="showSection('inventoryForm')">Inventory Update Form</button>
-            <button onclick="showSection('stockLevels')">Current Stock/Snapshot</button>
         </div>
     </div>
 
@@ -428,68 +398,6 @@
                 </div>
             </div>
         </div>
-
-        <div id="inventoryForm" class="tab-content">
-            <h2>Inventory Management Form</h2>
-            <div class="content-box">
-                <form id="inventoryForm" class="form-container">
-                    <div>
-                        <label for="inventoryItem">Item Name:</label>
-                        <input type="text" id="inventoryItem" name="item" required placeholder="e.g., Shampoo, Soap, Towels">
-                    </div>
-                    <div>
-                        <label for="inventoryQuantity">Quantity:</label>
-                        <input type="number" id="inventoryQuantity" name="quantity" required placeholder="e.g., 50" min="1">
-                    </div>
-                    <div>
-                        <label for="lowStockLevel">Low Stock Notification Level:</label>
-                        <input type="number" id="lowStockLevel" name="lowStockLevel" placeholder="e.g., 10" min="0">
-                    </div>
-                    <div>
-                        <label for="inventoryAction">Action:</label>
-                        <select id="inventoryAction" name="action" required>
-                            <option value="add">Add to Stock</option>
-                            <option value="use">Use from Stock</option>
-                        </select>
-                    </div>
-                    <button type="submit">Update Inventory</button>
-                </form>
-                <p id="inventoryMessage" style="text-align: center; color: #9b59b6; margin-top: 10px; font-weight: bold;"></p>
-            </div>
-        </div>
-
-        <div id="stockLevels" class="tab-content">
-            <h2>Current Stock Levels & Historical Snapshot</h2>
-            <div class="content-box">
-                
-                <input type="search" id="inventorySearch" placeholder="Search item..." style="padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; margin-bottom: 15px;">
-                
-                <div class="inventory-controls">
-                    <button onclick="loadInventory()" style="background-color: #95a5a6; color: white;">Current Stock (Refresh)</button>
-                    <button onclick="exportInventoryToExcel()" style="background-color: #f39c12; color: white;">Export</button>
-                    
-                    <label for="snapshotDate" style="font-weight: bold;">View Snapshot Date:</label>
-                    <input type="date" id="snapshotDate" style="flex-grow: 0.5;">
-                    <button onclick="getInventorySnapshot()" style="background-color: #3498db; color: white; padding: 8px 15px;">View Snapshot</button>
-                </div>
-                
-                <div class="table-wrapper">
-                    <table id="inventoryTable">
-                        <thead>
-                            <tr>
-                                <th>Item Name</th>
-                                <th>Stock Level</th>
-                                <th>Low Stock Threshold</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="inventoryBody">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
     </div>
 
     <script>
@@ -526,11 +434,6 @@
                 ic.classList.remove("fa-chevron-up");
                 ic.classList.add("fa-chevron-down");
             });
-            
-            // Trigger inventory load when the combined section is opened
-            if (id === 'stockLevels' && typeof loadInventory === 'function') {
-                loadInventory();
-            }
         }
         
         // Initial load: show the checklist form
