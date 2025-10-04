@@ -1,0 +1,685 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Hotel Management System</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div id="mainApp" class="container-wrapper">
+      <aside id="sidebar" class="sidebar">
+        <h1 class="sidebar-title">Room Management</h1>
+        <nav class="sidebar-nav">
+          <button
+            id="tabChecklist"
+            class="tab-button active"
+            data-section="roomChecklistSection"
+          >
+            Checklist
+          </button>
+          <button
+            id="tabHousekeeping"
+            class="tab-button"
+            data-section="housekeepingReportSection"
+          >
+            Reports
+          </button>
+          <button
+            id="tabInventory"
+            class="tab-button"
+            data-section="inventorySection"
+          >
+            Inventory
+          </button>
+        </nav>
+      </aside>
+
+      <main class="main-content">
+        <header class="header">
+          <h2 class="header-title-mobile">Room Management</h2>
+          <button id="menuToggle" class="menu-toggle">
+            &#9776;
+          </button>
+        </header>
+
+        <section id="roomChecklistSection" class="tab-content active-content">
+          <div class="card-large">
+            <h2 class="card-title-center">Hotel Room Checklist</h2>
+            <form id="checklistForm" class="form-grid">
+              <div>
+                <label for="room" class="form-label">Room Number:</label>
+                <select id="room" name="room" required class="form-input">
+                  <option value="">-- Select a Room --</option>
+                  <option value="101">Room 101</option>
+                  <option value="102">Room 102</option>
+                  <option value="103">Room 103</option>
+                  <option value="104">Room 104</option>
+                  <option value="105">Room 105</option>
+                  <option value="106">Room 106</option>
+                  <option value="107">Room 107</option>
+                  <option value="108">Room 108</option>
+                  <option value="109">Room 109</option>
+                  <option value="110">Room 110</option>
+                  <option value="111">Room 111</option>
+                  <option value="112">Room 112</option>
+                  <option value="113">Room 113</option>
+                  <option value="114">Room 114</option>
+                  <option value="115">Room 115</option>
+                  <option value="116">Room 116</option>
+                  <option value="117">Room 117</option>
+                  <option value="118">Room 118</option>
+                  <option value="119">Room 119</option>
+                  <option value="120">Room 120</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="date" class="form-label">Date:</label>
+                <input
+                  type="date"
+                  id="date"
+                  name="date"
+                  required
+                  class="form-input"
+                />
+              </div>
+
+              <div class="radio-grid">
+                <div class="radio-group">
+                  <p class="form-label">Towel:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="towels"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="towels"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+
+                <div class="radio-group">
+                  <p class="form-label">Soap:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="soap"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="soap"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+
+                <div class="radio-group">
+                  <p class="form-label">Door mat:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="door mat"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="door mat"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+
+                <div class="radio-group">
+                  <p class="form-label">Sandals:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="sandals"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="sandals"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+
+                <div class="radio-group">
+                  <p class="form-label">Toliet paper:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="toilet paper"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="toilet paper"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+
+                <div class="radio-group">
+                  <p class="form-label">Trash can:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="trash can"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="trash can"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+                
+                <div class="radio-group">
+                  <p class="form-label">Remote:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="remote"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="remote"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+                
+                <div class="radio-group">
+                  <p class="form-label">TV:</p>
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="tv"
+                      value="yes"
+                      required
+                      class="radio-input"
+                    />
+                    Yes</label
+                  >
+                  <label class="radio-label"
+                    ><input
+                      type="radio"
+                      name="tv"
+                      value="no"
+                      required
+                      class="radio-input"
+                    />
+                    No</label
+                  >
+                </div>
+              </div>
+
+              <button type="submit" class="submit-button green-button">
+                Submit Checklist
+              </button>
+            </form>
+            <p id="message" class="form-message-success"></p>
+          </div>
+
+          <div class="card-large mt-8">
+            <h2 class="card-title">Room Checklists</h2>
+            <div class="filter-controls">
+              <input
+                type="search"
+                id="searchInput"
+                placeholder="Search room or date..."
+                class="search-input"
+              />
+              <div class="button-group">
+                <button
+                  onclick="exportToExcel()"
+                  class="action-button yellow-button"
+                >
+                  Export
+                </button>
+                <button
+                  onclick="printChecklists()"
+                  class="action-button blue-button"
+                >
+                  Print
+                </button>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table id="checklistTable" class="data-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Room</th>
+                    <th class="table-header">Date</th>
+                    <th class="table-header">Items</th>
+                    <th class="table-header">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="checklistBody" class="table-body"></tbody>
+              </table>
+            </div>
+            <div class="pagination-controls">
+              <button id="prevBtn" class="pagination-button gray-button">
+                Prev
+              </button>
+              <span id="pageInfo" class="pagination-info"></span>
+              <button id="nextBtn" class="pagination-button gray-button">
+                Next
+              </button>
+            </div>
+          </div>
+
+          <div class="card-large mt-8">
+            <h3 class="card-title">Missing Items Summary</h3>
+            <div class="filter-controls-small">
+              <label for="missingItemsDateFilter" class="form-label"
+                >Filter by Date:</label
+              >
+              <input
+                type="date"
+                id="missingItemsDateFilter"
+                class="form-input-small"
+              />
+              <button
+                id="clearMissingItemsDateFilter"
+                class="action-button gray-button"
+              >
+                Clear Filter
+              </button>
+            </div>
+            <div id="missingItemsSummary" class="summary-area"></div>
+          </div>
+        </section>
+
+        <section id="housekeepingReportSection" class="tab-content hidden">
+          <div class="card-large">
+            <h2 class="card-title-center">Housekeeping Room Status Report</h2>
+            <form id="statusReportForm" class="form-grid-single">
+              <div>
+                <label for="reportRoom" class="form-label">Room Name:</label>
+                <input
+                  type="text"
+                  id="reportRoom"
+                  name="room"
+                  required
+                  class="form-input"
+                  placeholder="e.g., 101, Suite A"
+                />
+              </div>
+
+              <div>
+                <label for="reportCategory" class="form-label">Category:</label>
+                <select
+                  id="reportCategory"
+                  name="category"
+                  required
+                  class="form-input"
+                >
+                  <option value="">-- Select Category --</option>
+                  <option value="deluxe1">Deluxe 1</option>
+                  <option value="deluxe2">Deluxe 2</option>
+                  <option value="deluxetwin">Deluxe Twin</option>
+                  <option value="juniorsuite">Junior Suite</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="reportStatus" class="form-label">Status:</label>
+                <select
+                  id="reportStatus"
+                  name="status"
+                  required
+                  class="form-input"
+                >
+                  <option value="">-- Select Status --</option>
+                  <option value="arrival">Arrival</option>
+                  <option value="occupied">Occupied</option>
+                  <option value="departure">Departure</option>
+                  <option value="vacant_ready">Vacant Ready</option>
+                  <option value="vacant_not_ready">Vacant but not Ready</option>
+                  <option value="out_of_order">Out of Order</option>
+                  <option value="out_of_service">Out of Service</option>
+                </select>
+              </div>
+
+              <div>
+                <label for="reportRemarks" class="form-label">Remarks:</label>
+                <textarea
+                  id="reportRemarks"
+                  name="remarks"
+                  class="form-input"
+                  rows="3"
+                  placeholder="Any additional notes..."
+                ></textarea>
+              </div>
+
+              <div>
+                <label for="reportDateTime" class="form-label"
+                  >Date and Time:</label
+                >
+                <input
+                  type="datetime-local"
+                  id="reportDateTime"
+                  name="dateTime"
+                  required
+                  class="form-input"
+                />
+              </div>
+
+              <button type="submit" class="submit-button blue-button">
+                Submit Report
+              </button>
+            </form>
+            <p id="statusMessage" class="form-message-success"></p>
+          </div>
+
+          <div class="card-large mt-8">
+            <h2 class="card-title">Housekeeping Reports</h2>
+            <div class="filter-controls">
+              <div class="date-filter-group">
+                <label for="filterDate" class="form-label"
+                  >Filter by Date:</label
+                >
+                <input
+                  type="date"
+                  id="filterDate"
+                  class="form-input-small"
+                />
+              </div>
+              <div class="button-group">
+                <button
+                  onclick="filterStatusReportsByDate()"
+                  class="action-button purple-button"
+                >
+                  Apply
+                </button>
+                <button
+                  onclick="clearStatusDateFilter()"
+                  class="action-button gray-button"
+                >
+                  Clear
+                </button>
+                <button
+                  onclick="exportStatusReportsToExcel()"
+                  class="action-button yellow-button"
+                >
+                  Export
+                </button>
+                <button
+                  onclick="printStatusReports()"
+                  class="action-button blue-button"
+                >
+                  Print
+                </button>
+              </div>
+            </div>
+            <div class="table-wrapper">
+              <table id="statusReportTable" class="data-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Room</th>
+                    <th class="table-header">Category</th>
+                    <th class="table-header">Status</th>
+                    <th class="table-header">Remarks</th>
+                    <th class="table-header">Date & Time</th>
+                    <th class="table-header">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="statusReportBody" class="table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <section id="inventorySection" class="tab-content hidden">
+          <div class="card-large">
+            <h2 class="card-title-center">Inventory Management</h2>
+            <form id="inventoryForm" class="form-grid-single">
+              <div>
+                <label for="inventoryItem" class="form-label">Item Name:</label>
+                <input
+                  type="text"
+                  id="inventoryItem"
+                  name="item"
+                  required
+                  class="form-input"
+                  placeholder="e.g., Shampoo, Soap, Towels"
+                />
+              </div>
+
+              <div>
+                <label for="inventoryQuantity" class="form-label"
+                  >Quantity:</label
+                >
+                <input
+                  type="number"
+                  id="inventoryQuantity"
+                  name="quantity"
+                  required
+                  class="form-input"
+                  placeholder="e.g., 50"
+                  min="1"
+                />
+              </div>
+
+              <div>
+                <label for="lowStockLevel" class="form-label"
+                  >Low Stock Notification Level:</label
+                >
+                <input
+                  type="number"
+                  id="lowStockLevel"
+                  name="lowStockLevel"
+                  class="form-input"
+                  placeholder="e.g., 10"
+                  min="0"
+                />
+              </div>
+
+              <div>
+                <label for="inventoryAction" class="form-label">Action:</label>
+                <select
+                  id="inventoryAction"
+                  name="action"
+                  required
+                  class="form-input"
+                >
+                  <option value="add">Add to Stock</option>
+                  <option value="use">Use from Stock</option>
+                </select>
+              </div>
+
+              <button type="submit" class="submit-button indigo-button">
+                Update Inventory
+              </button>
+            </form>
+            <p id="inventoryMessage" class="form-message-success"></p>
+          </div>
+
+          <div class="card-large mt-8">
+            <h3 class="card-title">Current Stock Levels</h3>
+            <div class="filter-controls">
+              <input
+                type="search"
+                id="inventorySearch"
+                placeholder="Search item..."
+                class="search-input"
+              />
+              <div class="button-group">
+                <button
+                  onclick="loadInventory()"
+                  class="action-button gray-button"
+                >
+                  Refresh
+                </button>
+                <button
+                  onclick="exportInventoryToExcel()"
+                  class="action-button yellow-button"
+                >
+                  Export
+                </button>
+              </div>
+            </div>
+
+            <div class="snapshot-controls">
+              <h3 class="card-title-small">Inventory Snapshot</h3>
+              <div class="snapshot-filter-group">
+                <label for="snapshotDate" class="form-label"
+                  >Select Date:</label
+                >
+                <input
+                  type="date"
+                  id="snapshotDate"
+                  class="form-input-small"
+                />
+                <button
+                  onclick="getInventorySnapshot()"
+                  class="action-button blue-button"
+                >
+                  View Snapshot
+                </button>
+              </div>
+            </div>
+
+            <div class="table-wrapper">
+              <table id="inventoryTable" class="data-table">
+                <thead>
+                  <tr>
+                    <th class="table-header">Item Name</th>
+                    <th class="table-header">Stock Level</th>
+                    <th class="table-header">Low Stock Threshold</th>
+                    <th class="table-header" id="actionsHeader">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="inventoryBody" class="table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      // Function to switch active sections
+      function switchTab(sectionId) {
+        // Hide all sections
+        document.querySelectorAll('.tab-content').forEach(section => {
+          section.classList.remove('active-content');
+          section.classList.add('hidden');
+        });
+
+        // Deactivate all buttons
+        document.querySelectorAll('.tab-button').forEach(button => {
+          button.classList.remove('active');
+        });
+
+        // Show the selected section and activate the button
+        const activeSection = document.getElementById(sectionId);
+        if (activeSection) {
+          activeSection.classList.add('active-content');
+          activeSection.classList.remove('hidden');
+        }
+
+        const activeButton = document.querySelector(`[data-section="${sectionId}"]`);
+        if (activeButton) {
+          activeButton.classList.add('active');
+        }
+
+        // Hide sidebar on mobile after clicking a link
+        if (window.innerWidth < 640) {
+          document.getElementById('sidebar').classList.add('hidden-mobile');
+          document.getElementById('menuToggle').classList.remove('active');
+        }
+      }
+
+      // Add event listeners to buttons
+      document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.tab-button').forEach(button => {
+          button.addEventListener('click', () => {
+            const sectionId = button.getAttribute('data-section');
+            switchTab(sectionId);
+          });
+        });
+
+        // Mobile menu toggle logic
+        const menuToggle = document.getElementById('menuToggle');
+        const sidebar = document.getElementById('sidebar');
+
+        menuToggle.addEventListener('click', () => {
+          sidebar.classList.toggle('hidden-mobile');
+          menuToggle.classList.toggle('active');
+        });
+        
+        // Initial tab activation (Checklist by default)
+        switchTab('roomChecklistSection');
+      });
+    </script>
+    <script src="script3.js"></script>
+  </body>
+</html>
