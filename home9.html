@@ -1,187 +1,188 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <title>Hotel Management System</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Hotel Management Dashboard</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   <style>
-    /* Smooth accordion submenu */
-    .submenu {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height 0.3s ease;
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      display: flex;
     }
-    .submenu.open {
-      max-height: 500px; /* adjust if submenu gets larger */
+
+    /* Sidebar */
+    .sidebar {
+      width: 250px;
+      background: #2c3e50;
+      color: white;
+      height: 100vh;
+      overflow-y: auto;
+      padding-top: 20px;
+    }
+
+    .sidebar h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .nav-item {
+      padding: 12px 20px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: background 0.3s;
+    }
+
+    .nav-item:hover {
+      background: #34495e;
+    }
+
+    .submenu {
+      display: none;
+      flex-direction: column;
+      background: #34495e;
+    }
+
+    .submenu button {
+      padding: 10px 40px;
+      border: none;
+      background: none;
+      color: white;
+      text-align: left;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .submenu button:hover {
+      background: #3d566e;
+    }
+
+    /* Content */
+    .content {
+      flex: 1;
+      padding: 20px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
     }
   </style>
 </head>
-<body class="bg-gray-50 text-gray-800 antialiased flex">
+<body>
+  <div class="sidebar">
+    <h2>Dashboard</h2>
 
-  <!-- Sidebar -->
-  <aside class="w-64 bg-white shadow-xl h-screen sticky top-0 p-6 flex flex-col">
-    <header class="mb-8">
-      <h1 class="text-2xl font-extrabold text-gray-900 border-b pb-4">
-        Room Management
-      </h1>
-    </header>
-    <nav class="flex flex-col gap-2">
+    <!-- Checklist -->
+    <div class="nav-item" onclick="toggleMenu('checklistSubmenu', this)">
+      <span>Checklist</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </div>
+    <div id="checklistSubmenu" class="submenu">
+      <button onclick="showSection('checklistForm')">Checklist Form</button>
+      <button onclick="showSection('checklistsTable')">Checklists Table</button>
+      <button onclick="showSection('missingSummary')">Missing Items Summary</button>
+    </div>
 
-      <!-- Checklist -->
-      <button class="nav-main w-full text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-gray-700 hover:bg-gray-200"
-        data-target="roomChecklistSection" data-submenu="submenu-checklist">
-        Checklist
-      </button>
-      <div class="ml-4 submenu" id="submenu-checklist">
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="checklistFormSection">Form</button>
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="checklistTableSection">Checklists</button>
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="missingItemsSection">Missing Items</button>
-      </div>
+    <!-- Reports -->
+    <div class="nav-item" onclick="toggleMenu('reportsSubmenu', this)">
+      <span>Reports</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </div>
+    <div id="reportsSubmenu" class="submenu">
+      <button onclick="showSection('reportForm')">Report Form</button>
+      <button onclick="showSection('reportsTable')">Reports Table</button>
+    </div>
 
-      <!-- Reports -->
-      <button class="nav-main w-full text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-gray-700 hover:bg-gray-200"
-        data-target="housekeepingReportSection" data-submenu="submenu-reports">
-        Reports
-      </button>
-      <div class="ml-4 submenu" id="submenu-reports">
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="reportFormSection">Form</button>
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="reportTableSection">Reports</button>
-      </div>
+    <!-- Inventory -->
+    <div class="nav-item" onclick="toggleMenu('inventorySubmenu', this)">
+      <span>Inventory</span>
+      <i class="fa-solid fa-chevron-down"></i>
+    </div>
+    <div id="inventorySubmenu" class="submenu">
+      <button onclick="showSection('inventoryForm')">Inventory Form</button>
+      <button onclick="showSection('stockLevels')">Stock Levels</button>
+      <button onclick="showSection('inventorySnapshot')">Inventory Snapshot</button>
+    </div>
+  </div>
 
-      <!-- Inventory -->
-      <button class="nav-main w-full text-left py-2 px-4 text-sm font-semibold rounded-lg transition-all text-gray-700 hover:bg-gray-200"
-        data-target="inventorySection" data-submenu="submenu-inventory">
-        Inventory
-      </button>
-      <div class="ml-4 submenu" id="submenu-inventory">
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="inventoryFormSection">Form</button>
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="inventoryTableSection">Stock Levels</button>
-        <button class="nav-sub block w-full text-left py-1 px-3 text-sm text-gray-600 hover:text-blue-600"
-          data-target="inventorySnapshotSection">Snapshot</button>
-      </div>
+  <div class="content">
+    <h1>Welcome to Hotel Management Dashboard</h1>
 
-    </nav>
-  </aside>
+    <!-- Checklist Subsections -->
+    <div id="checklistForm" class="tab-content"> 
+      <h2>Checklist Form</h2>
+      <p>Form content here...</p>
+    </div>
+    <div id="checklistsTable" class="tab-content"> 
+      <h2>Checklists Table</h2>
+      <p>Table content here...</p>
+    </div>
+    <div id="missingSummary" class="tab-content"> 
+      <h2>Missing Items Summary</h2>
+      <p>Summary content here...</p>
+    </div>
 
-  <!-- Main Content -->
-  <div id="mainApp" class="flex-1 p-6 max-w-5xl mx-auto overflow-y-auto">
-    <main class="space-y-8">
+    <!-- Reports Subsections -->
+    <div id="reportForm" class="tab-content"> 
+      <h2>Report Form</h2>
+      <p>Report form content here...</p>
+    </div>
+    <div id="reportsTable" class="tab-content"> 
+      <h2>Reports Table</h2>
+      <p>Reports table content here...</p>
+    </div>
 
-      <!-- Checklist Section -->
-      <div id="roomChecklistSection" class="tab-content hidden">
-        <div id="checklistFormSection" class="subtab-content">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Room Checklist Form</h2>
-            <p>📋 Checklist form goes here...</p>
-          </div>
-        </div>
-        <div id="checklistTableSection" class="subtab-content hidden">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Room Checklists Table</h2>
-            <p>📊 Checklist table goes here...</p>
-          </div>
-        </div>
-        <div id="missingItemsSection" class="subtab-content hidden">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Missing Items Summary</h2>
-            <p>❌ Missing items summary goes here...</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Reports Section -->
-      <div id="housekeepingReportSection" class="tab-content hidden">
-        <div id="reportFormSection" class="subtab-content">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Housekeeping Report Form</h2>
-            <p>📝 Report form goes here...</p>
-          </div>
-        </div>
-        <div id="reportTableSection" class="subtab-content hidden">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Housekeeping Reports Table</h2>
-            <p>📊 Reports table goes here...</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- Inventory Section -->
-      <div id="inventorySection" class="tab-content hidden">
-        <div id="inventoryFormSection" class="subtab-content">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Inventory Form</h2>
-            <p>📦 Inventory form goes here...</p>
-          </div>
-        </div>
-        <div id="inventoryTableSection" class="subtab-content hidden">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Stock Levels</h2>
-            <p>📊 Stock table goes here...</p>
-          </div>
-        </div>
-        <div id="inventorySnapshotSection" class="subtab-content hidden">
-          <div class="bg-white p-6 rounded-xl shadow-lg">
-            <h2 class="text-2xl font-bold mb-6 text-center">Inventory Snapshot</h2>
-            <p>📸 Snapshot section goes here...</p>
-          </div>
-        </div>
-      </div>
-
-    </main>
+    <!-- Inventory Subsections -->
+    <div id="inventoryForm" class="tab-content"> 
+      <h2>Inventory Form</h2>
+      <p>Inventory form content here...</p>
+    </div>
+    <div id="stockLevels" class="tab-content"> 
+      <h2>Stock Levels</h2>
+      <p>Stock levels content here...</p>
+    </div>
+    <div id="inventorySnapshot" class="tab-content"> 
+      <h2>Inventory Snapshot</h2>
+      <p>Snapshot content here...</p>
+    </div>
   </div>
 
   <script>
-    // Main nav (Checklist / Reports / Inventory)
-    document.querySelectorAll(".nav-main").forEach(mainBtn => {
-      mainBtn.addEventListener("click", () => {
-        // Hide all sections
-        document.querySelectorAll(".tab-content").forEach(sec => sec.classList.add("hidden"));
+    // Toggle submenu with arrow icon
+    function toggleMenu(id, element) {
+      const submenu = document.getElementById(id);
+      const icon = element.querySelector("i");
 
-        // Show clicked section
-        const targetSection = document.getElementById(mainBtn.dataset.target);
-        if (targetSection) targetSection.classList.remove("hidden");
+      if (submenu.style.display === "flex") {
+        submenu.style.display = "none";
+        icon.classList.remove("fa-chevron-up");
+        icon.classList.add("fa-chevron-down");
+      } else {
+        // Close all other submenus
+        document.querySelectorAll('.submenu').forEach(menu => menu.style.display = 'none');
+        document.querySelectorAll('.nav-item i').forEach(ic => {
+          ic.classList.remove("fa-chevron-up");
+          ic.classList.add("fa-chevron-down");
+        });
 
-        // Collapse all submenus
-        document.querySelectorAll(".submenu").forEach(menu => menu.classList.remove("open"));
-        
-        // Expand submenu for this main
-        const submenuId = mainBtn.dataset.submenu;
-        const submenu = document.getElementById(submenuId);
-        if (submenu) submenu.classList.add("open");
+        submenu.style.display = "flex";
+        icon.classList.remove("fa-chevron-down");
+        icon.classList.add("fa-chevron-up");
+      }
+    }
 
-        // Auto-click first sub item
-        const firstSub = submenu.querySelector(".nav-sub");
-        if (firstSub) firstSub.click();
-      });
-    });
-
-    // Sub nav (Form / Table / Summary etc.)
-    document.querySelectorAll(".nav-sub").forEach(subBtn => {
-      subBtn.addEventListener("click", () => {
-        // Hide all subsections
-        document.querySelectorAll(".subtab-content").forEach(sec => sec.classList.add("hidden"));
-
-        // Show clicked subsection
-        const target = document.getElementById(subBtn.dataset.target);
-        if (target) target.classList.remove("hidden");
-
-        // Reset subnav styles
-        document.querySelectorAll(".nav-sub").forEach(b => b.classList.remove("text-blue-600", "font-semibold"));
-        subBtn.classList.add("text-blue-600", "font-semibold");
-      });
-    });
-
-    // Initialize first section
-    document.querySelector(".nav-main").click();
+    // Show subsection content
+    function showSection(id) {
+      document.querySelectorAll('.tab-content').forEach(sec => sec.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+    }
   </script>
-
 </body>
 </html>
