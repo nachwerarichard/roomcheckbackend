@@ -286,28 +286,31 @@ display: flex;
     </style>
 </head>
 <body>
-    <div class="sidebar">
-        <h2></i>Patrinah Hotel </h2>
-        
-        <div class="nav-item" onclick="toggleMenu('checklistSubmenu', this)">
-            <span>Checklist</span>
-            <i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div id="checklistSubmenu" class="submenu">
-            <button onclick="showSection('checklistForm')"><i class="fa-solid fa-list-check"></i> Checklist Form</button>
-            <button onclick="showSection('checklistsTable')"><i class="fa-solid fa-table"></i> Checklists Table</button>
-            <button onclick="showSection('missingSummary')"><i class="fa-solid fa-triangle-exclamation"></i> Missing Items Summary</button>
-        </div>
-
-        <div class="nav-item" onclick="toggleMenu('reportsSubmenu', this)">
-            <span>Reports</span>
-            <i class="fa-solid fa-chevron-down"></i>
-        </div>
-        <div id="reportsSubmenu" class="submenu">
-            <button onclick="showSection('reportForm')"><i class="fa-solid fa-clipboard-list"></i> Status Report Form</button>
-            <button onclick="showSection('reportsTable')"><i class="fa-solid fa-chart-simple"></i> Status Reports Table</button>
-        </div>
+   <div class="sidebar">
+    <h2>
+        <img src="patrina.png" alt="Patrinah Hotel Logo" class="logo-icon">
+        Patrinah Hotel
+    </h2>
+    
+    <div class="nav-item" onclick="toggleMenu('checklistSubmenu', this)">
+        <span>Checklist</span>
+        <i class="fa-solid fa-chevron-down"></i>
     </div>
+    <div id="checklistSubmenu" class="submenu">
+        <button onclick="showSection('checklistForm')"><i class="fa-solid fa-list-check"></i> Checklist Form</button>
+        <button onclick="showSection('checklistsTable')"><i class="fa-solid fa-table"></i> Checklists Table</button>
+        <button onclick="showSection('missingSummary')"><i class="fa-solid fa-triangle-exclamation"></i> Missing Items Summary</button>
+    </div>
+
+    <div class="nav-item" onclick="toggleMenu('reportsSubmenu', this)">
+        <span>Reports</span>
+        <i class="fa-solid fa-chevron-down"></i>
+    </div>
+    <div id="reportsSubmenu" class="submenu">
+        <button onclick="showSection('reportForm')"><i class="fa-solid fa-clipboard-list"></i> Status Report Form</button>
+        <button onclick="showSection('reportsTable')"><i class="fa-solid fa-chart-simple"></i> Status Reports Table</button>
+    </div>
+</div>
 
     <div class="content">
 
