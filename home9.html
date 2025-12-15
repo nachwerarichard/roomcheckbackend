@@ -19,6 +19,31 @@ display: flex;
             color: #333; /* Darker text for readability */
         }
 
+            /* Styling for the overall sidebar header */
+.sidebar h2 {
+    /* 1. Use Flexbox for alignment */
+    display: flex; 
+    /* 2. Vertically align the logo and text in the center */
+    align-items: center; 
+    /* 3. Add necessary padding and a separator */
+    padding: 15px;
+    border-bottom: 1px solid #ddd; /* Light separator line */
+    margin-top: 0;
+    margin-bottom: 0;
+    color: #333; /* Dark text color */
+}
+
+/* Styling for the logo image itself */
+.logo-icon {
+    /* 1. Set a fixed size for the logo */
+    width: 32px; 
+    height: 32px; 
+    /* 2. Add space between the logo and the "Patrinah Hotel" text */
+    margin-right: 10px; 
+    /* 3. Ensure the image scales correctly within its box */
+    object-fit: contain; 
+}
+            
         /* Sidebar - Brighter, modern dark blue */
         .sidebar {
             width: 260px; /* Slightly wider */
