@@ -308,6 +308,18 @@ display: flex;
         .action-btn:hover {
             color: #2980b9;
         }
+
+            /* Positions logout at the bottom and gives it a distinct hover color */
+.logout-item {
+    margin-top: auto; /* Pushes it to the bottom if the sidebar is a flexbox */
+    color: #ff4d4d; /* Reddish color for logout */
+    border-top: 1px solid #444; /* Subtle separator */
+}
+
+.logout-item:hover {
+    background-color: #ff4d4d;
+    color: white;
+}
     </style>
 </head>
 <body>
@@ -334,6 +346,11 @@ display: flex;
     <div id="reportsSubmenu" class="submenu">
         <button onclick="showSection('reportForm')"><i class="fa-solid fa-clipboard-list"></i> Status Report Form</button>
         <button onclick="showSection('reportsTable')"><i class="fa-solid fa-chart-simple"></i> Status Reports Table</button>
+    </div>
+
+    <div class="nav-item logout-item" onclick="window.location.href='https://elegant-pasca-cea136.netlify.app/frontend/login.html'">
+        <span>Logout</span>
+        <i class="fa-solid fa-right-from-bracket"></i>
     </div>
 </div>
 
