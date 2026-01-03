@@ -807,10 +807,7 @@ document.getElementById('inventorySearch')?.addEventListener('input', () =>
             document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
             // This part is a bit more complex in pure JS without knowing the parent, but for a simple design:
             // Find the button and its parent submenu, then the submenu's previous sibling (the nav-item)
-            const button = document.querySelector(`#${id}`).closest('.submenu').previousElementSibling;
-            if (button) {
-                 button.classList.add('active');
-            }
+            
         }
         
         // Initial load: show the checklist form
