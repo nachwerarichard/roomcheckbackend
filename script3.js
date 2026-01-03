@@ -84,7 +84,6 @@ tabInventoryBtn?.addEventListener('click', () => showTab('inventory'));
 /* ---------- Startup ---------- */
 document.addEventListener('DOMContentLoaded', () => {
   // Directly show the main app since there's no login
-  document.getElementById('mainApp').style.display = 'block';
   showTab('checklist');
 
   const missingItemsDateFilter = document.getElementById('missingItemsDateFilter');
