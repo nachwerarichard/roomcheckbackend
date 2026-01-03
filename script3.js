@@ -767,6 +767,63 @@ document.getElementById('inventorySearch')?.addEventListener('input', () =>
   renderInventoryTable(allInventory, false)
 );
 
+
+        // JavaScript functions from the First Piece
+        function toggleMenu(id, element) {
+            const submenu = document.getElementById(id);
+            const icon = element.querySelector("i");
+
+            const isSubmenuOpen = submenu.style.display === "flex";
+
+            // Close all submenus and reset icons
+            document.querySelectorAll('.submenu').forEach(menu => menu.style.display = 'none');
+            document.querySelectorAll('.nav-item i').forEach(ic => {
+                ic.classList.remove("fa-chevron-up");
+                ic.classList.add("fa-chevron-down");
+            });
+
+            // Open the clicked submenu only if it was not already open
+            if (!isSubmenuOpen) {
+                submenu.style.display = "flex";
+                icon.classList.remove("fa-chevron-down");
+                icon.classList.add("fa-chevron-up");
+            }
+        }
+
+        function showSection(id) {
+            // Remove active state from all tab-content elements
+            document.querySelectorAll('.tab-content').forEach(sec => sec.classList.remove('active'));
+            // Add active state to the selected tab-content element
+            document.getElementById(id).classList.add('active');
+
+            // Close all submenus when a section is selected for a cleaner UI
+            document.querySelectorAll('.submenu').forEach(menu => menu.style.display = 'none');
+            document.querySelectorAll('.nav-item i').forEach(ic => {
+                ic.classList.remove("fa-chevron-up");
+                ic.classList.add("fa-chevron-down");
+            });
+
+            // Optional: Highlight the parent nav-item
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            // This part is a bit more complex in pure JS without knowing the parent, but for a simple design:
+            // Find the button and its parent submenu, then the submenu's previous sibling (the nav-item)
+            const button = document.querySelector(`#${id}`).closest('.submenu').previousElementSibling;
+            if (button) {
+                 button.classList.add('active');
+            }
+        }
+        
+        // Initial load: show the checklist form
+        document.addEventListener('DOMContentLoaded', () => {
+            showSection('checklistForm');
+            // Manually activate the first nav-item to show initial state
+            document.querySelector('.nav-item').classList.add('active');
+        });
+
+        // The remaining functions (exportToExcel, printChecklists, filterStatusReportsByDate, etc.) 
+        // are expected to be in the linked 'script3.js' file. 
+    
+
 // Expose functions used by inline onclick
 window.showTab = showTab;
 window.exportToExcel = exportToExcel;
